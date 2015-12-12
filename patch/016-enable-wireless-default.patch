@@ -1,0 +1,13 @@
+diff --git a/package/kernel/mac80211/files/lib/wifi/mac80211.sh b/package/kernel/mac80211/files/lib/wifi/mac80211.sh
+index ea229d6..a7bfa63 100644
+--- a/package/kernel/mac80211/files/lib/wifi/mac80211.sh
++++ b/package/kernel/mac80211/files/lib/wifi/mac80211.sh
+@@ -115,7 +115,7 @@ config wifi-device  radio$devidx
+ $dev_id
+ $ht_capab
+ 	# REMOVE THIS LINE TO ENABLE WIFI:
+-	option disabled 1
++
+ 
+ config wifi-iface
+ 	option device   radio$devidx
