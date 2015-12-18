@@ -17,7 +17,7 @@ unzip -qn compiler-latest.zip
 directory=./feeds
 for file in $( find $directory -name '*.js' )
 do
-  if [[ $file == *min.* ]]
+  if [[ $file == *arduino* ]]
   then
   echo Skipping $file
       continue
