@@ -10,7 +10,28 @@
  
  bn = s:taboption("advanced", DynamicList, "bogusnxdomain", translate("Bogus NX Domain Override"),
  	translate("List of hosts that supply bogus NX domain results"))
-@@ -174,7 +177,7 @@ em = s:taboption("advanced", Value, "edn
+@@ -129,6 +132,20 @@ rl = s:taboption("general", Flag, "rebin
+ 
+ rl:depends("rebind_protection", "1")
+ 
++ls = s:taboption("general", Flag, "localservice",
++	translate("Only allow local service"),
++	translate("Accept DNS queries only from hosts whose address is on a local subnet"))
++ls.optional = true
++
++qd = s:taboption("general", Flag, "quietdhcp",
++	translate("Suppress DHCP routine logging"),
++	translate("Suppress logging of the routine operation of these protocols"))
++qd.optional = true
++
++si = s:taboption("general", Flag, "sequential_ip",
++	translate("Allocate IP sequentially"),
++	translate("Allocate IP sequentially starting from the lowest available address"))
++si.optional = true
+ 
+ rd = s:taboption("general", DynamicList, "rebind_domain",
+ 	translate("Domain whitelist"),
+@@ -174,7 +191,7 @@ em = s:taboption("advanced", Value, "edn
  
  em.optional = true
  em.datatype = "uinteger"
@@ -19,7 +40,7 @@
  
  
  cq = s:taboption("advanced", Value, "dnsforwardmax",
-@@ -185,6 +188,13 @@ cq.optional = true
+@@ -185,6 +202,13 @@ cq.optional = true
  cq.datatype = "uinteger"
  cq.placeholder = 150
  
