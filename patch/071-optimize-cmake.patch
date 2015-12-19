@@ -293,8 +293,8 @@
 --- /dev/null	2015-12-19 10:32:16.723017304 +0800
 +++ ./package/system/rpcd/patches/CMakeList.patch	2015-12-19 19:04:53.578051908 +0800
 @@ -0,0 +1,11 @@
-+--- CMakeLists.txt
-++++ CMakeLists.txt
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
 +@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 + INCLUDE(CheckFunctionExists)
 + 
