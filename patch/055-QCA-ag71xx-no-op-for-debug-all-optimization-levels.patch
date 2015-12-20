@@ -1,0 +1,26 @@
+diff --git a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
+index 31b38d7..52bb390 100644
+--- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
++++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
+@@ -36,7 +36,7 @@ static inline unsigned int ag71xx_max_frame_len(unsigned int mtu)
+ {
+ 	return ETH_SWITCH_HEADER_LEN + ETH_HLEN + VLAN_HLEN + mtu + ETH_FCS_LEN;
+ }
+-
++#ifdef DEBUG
+ static void ag71xx_dump_dma_regs(struct ag71xx *ag)
+ {
+ 	DBG("%s: dma_tx_ctrl=%08x, dma_tx_desc=%08x, dma_tx_status=%08x\n",
+@@ -89,7 +89,11 @@ static inline void ag71xx_dump_intr(struct ag71xx *ag, char *label, u32 intr)
+ 		(intr & AG71XX_INT_RX_OF) ? "RXOF " : "",
+ 		(intr & AG71XX_INT_RX_BE) ? "RXBE " : "");
+ }
+-
++#else /* !DEBUG */
++#define ag71xx_dump_dma_regs(__ag)
++#define ag71xx_dump_regs(__ag)
++#define ag71xx_dump_intr(__ag, __label, __intr)
++#endif /* DEBUG */
+ static void ag71xx_ring_free(struct ag71xx_ring *ring)
+ {
+ 	kfree(ring->buf);
