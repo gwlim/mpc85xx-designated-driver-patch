@@ -24,3 +24,46 @@ index 31b38d7..52bb390 100644
  static void ag71xx_ring_free(struct ag71xx_ring *ring)
  {
  	kfree(ring->buf);
+--- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
++++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
+@@ -364,7 +364,7 @@ static void ag71xx_dma_reset(struct ag71
+ 	u32 val;
+ 	int i;
+ 
+-	ag71xx_dump_dma_regs(ag);
++//	ag71xx_dump_dma_regs(ag);
+ 
+ 	/* stop RX and TX */
+ 	ag71xx_wr(ag, AG71XX_REG_RX_CTRL, 0);
+@@ -404,7 +404,7 @@ static void ag71xx_dma_reset(struct ag71
+ 		pr_alert("%s: unable to clear DMA Tx status: %08x\n",
+ 			 ag->dev->name, val);
+ 
+-	ag71xx_dump_dma_regs(ag);
++//	ag71xx_dump_dma_regs(ag);
+ }
+ 
+ #define MAC_CFG1_INIT	(MAC_CFG1_RXE | MAC_CFG1_TXE | \
+@@ -1101,7 +1101,7 @@ static irqreturn_t ag71xx_interrupt(int
+ 	u32 status;
+ 
+ 	status = ag71xx_rr(ag, AG71XX_REG_INT_STATUS);
+-	ag71xx_dump_intr(ag, "raw", status);
++//	ag71xx_dump_intr(ag, "raw", status);
+ 
+ 	if (unlikely(!status))
+ 		return IRQ_NONE;
+@@ -1291,11 +1291,11 @@ static int ag71xx_probe(struct platform_
+ 
+ 	netif_napi_add(dev, &ag->napi, ag71xx_poll, AG71XX_NAPI_WEIGHT);
+ 
+-	ag71xx_dump_regs(ag);
++//	ag71xx_dump_regs(ag);
+ 
+ 	ag71xx_hw_init(ag);
+ 
+-	ag71xx_dump_regs(ag);
++//	ag71xx_dump_regs(ag);
+ 
+ 	err = ag71xx_phy_connect(ag);
+ 	if (err)
