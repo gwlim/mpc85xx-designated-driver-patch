@@ -11,7 +11,7 @@ index 0000000..827d302
 +  */
 + #ifndef NET_SKB_PAD
 +-#define NET_SKB_PAD	max(64, L1_CACHE_BYTES)
-++#define NET_SKB_PAD	max(32, L1_CACHE_BYTES)
+++#define NET_SKB_PAD	max(64, L1_CACHE_BYTES) // Optimal Value is 64. Significant effect on Wireless Throughput
 + #endif
 + 
 + int ___pskb_trim(struct sk_buff *skb, unsigned int len);
