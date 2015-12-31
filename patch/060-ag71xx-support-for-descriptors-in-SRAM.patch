@@ -1,13 +1,13 @@
 --- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx.h
 +++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx.h
-@@ -103,6 +103,7 @@ struct ag71xx_ring {
- 	unsigned int		curr;
- 	unsigned int		dirty;
- 	unsigned int		size;
+@@ -98,6 +98,7 @@ struct ag71xx_ring {
+ 	struct ag71xx_buf	*buf;
+ 	u8			*descs_cpu;
+ 	dma_addr_t		descs_dma;
 +	void __iomem		*iomem;
- };
- 
- struct ag71xx_mdio {
+ 	u16			desc_split;
+ 	u16			desc_size;
+ 	unsigned int		curr;
 @@ -149,6 +150,7 @@ struct ag71xx {
  	struct platform_device	*pdev;
  	struct net_device	*dev;
