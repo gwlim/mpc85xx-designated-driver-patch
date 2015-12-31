@@ -1,5 +1,5 @@
 diff --git a/include/package.mk b/include/package.mk
-index 6538afe..07b2f62 100644
+index 6538afe..1f7c77d 100644
 --- a/include/package.mk
 +++ b/include/package.mk
 @@ -13,7 +13,7 @@ PKG_BUILD_DIR ?= $(BUILD_DIR)/$(PKG_NAME)$(if $(PKG_VERSION),-$(PKG_VERSION))
@@ -11,3 +11,16 @@ index 6538afe..07b2f62 100644
  
  ifneq ($(CONFIG_PKG_BUILD_USE_JOBSERVER),)
    MAKE_J:=$(if $(MAKE_JOBSERVER),$(MAKE_JOBSERVER) -j)
+@@ -27,12 +27,6 @@ else
+ PKG_JOBS?=$(if $(PKG_BUILD_PARALLEL)$(CONFIG_PKG_DEFAULT_PARALLEL),\
+ 	$(if $(CONFIG_PKG_BUILD_PARALLEL),$(MAKE_J),-j1),-j1)
+ endif
+-ifdef CONFIG_USE_MIPS16
+-  ifeq ($(strip $(PKG_USE_MIPS16)),1)
+-    TARGET_ASFLAGS_DEFAULT = $(filter-out -mips16 -minterlink-mips16,$(TARGET_CFLAGS))
+-    TARGET_CFLAGS += -mips16 -minterlink-mips16
+-  endif
+-endif
+ 
+ include $(INCLUDE_DIR)/hardening.mk
+ include $(INCLUDE_DIR)/prereq.mk
