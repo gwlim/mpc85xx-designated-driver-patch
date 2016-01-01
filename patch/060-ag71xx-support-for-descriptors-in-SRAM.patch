@@ -149,8 +149,8 @@
  config AG71XX_DEBUG
  	bool "Atheros AR71xx built-in ethernet driver debugging"
  	default n
---- config-4.1.orig	2016-01-01 00:58:51.577972734 +0800
-+++ config-4.1	2016-01-01 00:58:14.442925077 +0800
+--- a/target/linux/ar71xx/config-4.1
++++ b/target/linux/ar71xx/config-4.1
 @@ -1,5 +1,6 @@
  CONFIG_AG71XX=y
  CONFIG_AG71XX_AR8216_SUPPORT=y
