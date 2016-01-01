@@ -11,7 +11,7 @@ index 3434d89..a2ae6a9 100644
  	--with-slibdir=$(TOOLCHAIN_DIR)/lib \
  	--enable-lto \
 +	--with-arch=mips32r2 \
-+	--with-mtune=24kc \
++	--with-mtune=74kc \
 +	--with-mips-plt \
 +	--disable-nls \
  	--with-libelf=$(TOPDIR)/staging_dir/host

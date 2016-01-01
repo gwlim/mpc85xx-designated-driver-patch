@@ -9,7 +9,7 @@ index 24d7d5c..8333030 100644
 -FEATURES:=mips16
 -CPU_TYPE=34kc
 +FEATURES:=
-+CPU_TYPE=24kc
++CPU_TYPE=74kc
  SUBTARGETS:=generic nand mikrotik
  
  KERNEL_PATCHVER:=4.1

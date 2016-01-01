@@ -9,7 +9,7 @@
  #define AG71XX_RX_RING_SIZE_DEFAULT	128
 -
 -#define AG71XX_TX_RING_SIZE_MAX		48
-+//Best Default Ring Size Value For 24kc TX 32 RX 128 but have to increase to 64 or wireless throughput will occassionally stuck low throughput
++//Best Default Ring Size Value For 74kc TX 32 RX 128 but have to increase to 64 or wireless throughput will occassionally stuck low throughput
 +#define AG71XX_TX_RING_SIZE_MAX		64 
  #define AG71XX_RX_RING_SIZE_MAX		128
  
