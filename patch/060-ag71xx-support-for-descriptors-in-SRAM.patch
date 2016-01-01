@@ -149,12 +149,3 @@
  config AG71XX_DEBUG
  	bool "Atheros AR71xx built-in ethernet driver debugging"
  	default n
---- a/target/linux/ar71xx/config-4.1
-+++ b/target/linux/ar71xx/config-4.1
-@@ -1,5 +1,6 @@
- CONFIG_AG71XX=y
- CONFIG_AG71XX_AR8216_SUPPORT=y
-+# CONFIG_AG71XX_SRAM_DESCRIPTORS is not set
- # CONFIG_AG71XX_DEBUG is not set
- # CONFIG_AG71XX_DEBUG_FS is not set
- CONFIG_AR8216_PHY=y
