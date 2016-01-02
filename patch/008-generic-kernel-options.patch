@@ -1,5 +1,5 @@
 diff --git a/target/linux/generic/config-4.1 b/target/linux/generic/config-4.1
-index 0f76041..c6b69d4 100644
+index 0f76041..4c75ebc 100644
 --- a/target/linux/generic/config-4.1
 +++ b/target/linux/generic/config-4.1
 @@ -92,7 +92,7 @@ CONFIG_32BIT=y
@@ -388,6 +388,15 @@ index 0f76041..c6b69d4 100644
  # CONFIG_NO_IOPORT is not set
  # CONFIG_NS83820 is not set
  # CONFIG_NTFS_DEBUG is not set
+@@ -3110,7 +3115,7 @@ CONFIG_RCU_FANOUT_LEAF=16
+ CONFIG_RCU_KTHREAD_PRIO=0
+ # CONFIG_RCU_NOCB_CPU is not set
+ # CONFIG_RCU_TORTURE_TEST is not set
+-CONFIG_RCU_TORTURE_TEST_SLOW_INIT_DELAY=3
++# CONFIG_RCU_TORTURE_TEST_SLOW_INIT_DELAY is not set
+ # CONFIG_RCU_TRACE is not set
+ # CONFIG_RCU_USER_QS is not set
+ # CONFIG_RC_ATI_REMOTE is not set
 @@ -3661,8 +3666,8 @@ CONFIG_SIGNALFD=y
  # CONFIG_SKGE is not set
  # CONFIG_SKY2 is not set
