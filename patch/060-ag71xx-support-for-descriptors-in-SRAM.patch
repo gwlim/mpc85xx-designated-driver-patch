@@ -1,3 +1,8 @@
+/*
+* This patch should only be enabled for Atheros SOCs with the SRAM facility onchip
+* If it is enabled on chips without SRAM like the AR9132 or AR7240 the ethernet interface will not initialise
+* Known SOCs with SRAM includes AR9344/AR9331 check the datasheet for information
+*/
 --- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx.h
 +++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx.h
 @@ -98,6 +98,7 @@ struct ag71xx_ring {
