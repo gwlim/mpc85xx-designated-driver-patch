@@ -8,14 +8,14 @@
  	u16			desc_split;
  	u16			desc_size;
  	unsigned int		curr;
-@@ -149,6 +150,7 @@ struct ag71xx {
+@@ -147,6 +147,7 @@ struct ag71xx {
  	struct platform_device	*pdev;
  	struct net_device	*dev;
  	struct napi_struct	napi;
 +	unsigned int		gmac_num;
  	u32			msg_enable;
  
- 	struct ag71xx_desc	*stop_desc;
+ 	void __iomem		*mac_base;
 --- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
 +++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
 @@ -13,6 +13,12 @@
