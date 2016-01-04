@@ -11,7 +11,7 @@ index 0000000..4e00bd8
 + LIBCC = -lgcc
 + CPPFLAGS =
 +-CFLAGS = -Os -pipe
-++CFLAGS = -Os -pipe -march=mips32r2 -mtune=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline
+++CFLAGS = -Os -pipe -march=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline
 + CFLAGS_C99FSE = -std=c99 -ffreestanding -nostdinc 
 + 
 + CFLAGS_ALL = $(CFLAGS_C99FSE)

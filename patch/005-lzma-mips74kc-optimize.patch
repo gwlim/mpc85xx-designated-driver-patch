@@ -11,8 +11,8 @@ index 5f10bdb..9736717 100644
  		  -fno-common -ffreestanding -fhonour-copts \
 -		  -mabi=32 -march=mips32r2 \
 -		  -Wa,-32 -Wa,-march=mips32r2 -Wa,-mips32r2 -Wa,--trap
-+		  -mabi=32 -march=mips32r2 -mtune=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline \
-+		  -Wa,-32 -Wa,-march=mips32r2 -mtune=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline -Wa,-mips32r2 -mtune=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline -Wa,--trap
++		  -mabi=32 -march=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline \
++		  -Wa,-32 -Wa,-march=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline -Wa,-march=74kc -mno-branch-likely -mno-mips16 -mno-interlink-compressed -mplt -msym32 -fno-caller-saves -fomit-frame-pointer -mno-long-calls -fsee -finline -Wa,--trap
  CFLAGS		+= -D_LZMA_PROB32
  
  ASFLAGS		= $(CFLAGS) -D__ASSEMBLY__
