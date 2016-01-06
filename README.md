@@ -1,5 +1,5 @@
-Custom OpenWrt Designated Driver Patch For Barrier-Breaker TL-WDR3500/3600/4300/4310/MW4350R
-======================================================================
+Custom OpenWrt Designated Driver Patch For TL-WDR3500/3600/4300/4310/MW4350R
+============================================================================
 
 Dependencies
 ------------
