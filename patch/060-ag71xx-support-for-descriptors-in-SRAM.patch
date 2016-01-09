@@ -5,22 +5,22 @@
 */
 --- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx.h
 +++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx.h
-@@ -98,6 +98,7 @@ struct ag71xx_ring {
- 	struct ag71xx_buf	*buf;
- 	u8			*descs_cpu;
+@@ -100,6 +100,7 @@ struct ag71xx_ring {
  	dma_addr_t		descs_dma;
-+	void __iomem		*iomem;
  	u16			desc_split;
  	u16			desc_size;
++	void __iomem		*iomem;
  	unsigned int		curr;
-@@ -147,6 +147,7 @@ struct ag71xx {
- 	struct platform_device	*pdev;
+ 	unsigned int		dirty;
+ 	unsigned int		size;
+@@ -148,6 +149,7 @@ struct ag71xx {
  	struct net_device	*dev;
  	struct napi_struct	napi;
-+	unsigned int		gmac_num;
  	u32			msg_enable;
++	unsigned int		gmac_num;
  
- 	void __iomem		*mac_base;
+ 	struct ag71xx_ring	rx_ring ____cacheline_aligned;
+ 	struct ag71xx_ring	tx_ring ____cacheline_aligned;
 --- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
 +++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
 @@ -13,6 +13,12 @@
