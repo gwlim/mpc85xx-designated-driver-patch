@@ -1,8 +1,8 @@
 diff --git a/toolchain/gcc/final/Makefile b/toolchain/gcc/final/Makefile
-index 3434d89..a2ae6a9 100644
+index 3434d89..f64242b 100644
 --- a/toolchain/gcc/final/Makefile
 +++ b/toolchain/gcc/final/Makefile
-@@ -7,9 +7,13 @@ GCC_CONFIGURE += \
+@@ -7,9 +7,11 @@ GCC_CONFIGURE += \
  	--disable-libsanitizer \
  	--enable-languages=$(TARGET_LANGUAGES) \
  	--enable-shared \
@@ -10,8 +10,6 @@ index 3434d89..a2ae6a9 100644
 +	--enable-threads=posix --enable-libstdcxx-threads \
  	--with-slibdir=$(TOOLCHAIN_DIR)/lib \
  	--enable-lto \
-+	--with-arch=mips32r2 \
-+	--with-mtune=74kc \
 +	--with-mips-plt \
 +	--disable-nls \
  	--with-libelf=$(TOPDIR)/staging_dir/host
