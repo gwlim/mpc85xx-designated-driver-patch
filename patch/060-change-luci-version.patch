@@ -5,5 +5,5 @@
  
  luciname    = "$variant"
 -luciversion = "${2:-Git}"
-+luciversion = " 15.05 "
++luciversion = " Trunk "
  EOF
