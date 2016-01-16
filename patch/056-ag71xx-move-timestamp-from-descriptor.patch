@@ -52,7 +52,7 @@
 @@ -924,7 +923,7 @@ static int ag71xx_tx_packets(struct ag71
  
  		if (!flush && !ag71xx_desc_empty(desc)) {
- 			if (pdata->is_ar7240 &&
+ 			if (pdata->is_ar724x &&
 -			    ag71xx_check_dma_stuck(ag, ring->buf[i].timestamp))
 +			    ag71xx_check_dma_stuck(ag, ag->dev))
  				schedule_work(&ag->restart_work);
