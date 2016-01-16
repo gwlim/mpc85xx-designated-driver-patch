@@ -8,11 +8,11 @@
  
  	max_frame_len = ag71xx_max_frame_len(dev->mtu);
  	ag->rx_buf_size = max_frame_len + NET_SKB_PAD + NET_IP_ALIGN;
-@@ -642,9 +641,11 @@ static int ag71xx_open(struct net_device
- 	/* setup max frame length */
+@@ -690,9 +690,11 @@ static int ag71xx_open(struct net_device
  	ag71xx_wr(ag, AG71XX_REG_MAC_MFL, max_frame_len);
+ 	ag71xx_hw_set_macaddr(ag, dev->dev_addr);
  
--	ret = ag71xx_rings_init(ag);
+-	ret = ag71xx_hw_enable(ag);
 -	if (ret)
 -		goto err;
 +	if (ag71xx_rings_init(ag))
@@ -21,7 +21,7 @@
 +		return ag71xx_rings_init(ag);
 +	}
  
- 	napi_enable(&ag->napi);
+ 	ag71xx_phy_start(ag);
  
 @@ -660,9 +661,6 @@ static int ag71xx_open(struct net_device
  
