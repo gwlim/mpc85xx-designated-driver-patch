@@ -15,10 +15,10 @@
 -	ret = ag71xx_hw_enable(ag);
 -	if (ret)
 -		goto err;
-+	if (ag71xx_rings_init(ag))
++	if (ag71xx_hw_enable(ag))
 +	{
 +		ag71xx_rings_cleanup(ag);
-+		return ag71xx_rings_init(ag);
++		return ag71xx_hw_enable(ag);
 +	}
  
  	ag71xx_phy_start(ag);
