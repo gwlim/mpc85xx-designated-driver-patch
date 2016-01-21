@@ -18,8 +18,8 @@
 +	void __iomem		*mac_base;
 +	
 +	unsigned int		max_frame_len;
-+	unsigned int		desc_pktlen_mask;
 +	unsigned int		rx_buf_size;
++	unsigned int		desc_pktlen_mask;
 +	
  	struct ag71xx_desc	*stop_desc;
  	dma_addr_t		stop_desc_dma;
