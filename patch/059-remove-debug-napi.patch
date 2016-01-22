@@ -1,0 +1,20 @@
+--- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
++++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
+@@ -1084,7 +1084,7 @@ static int ag71xx_poll(struct napi_struc
+ //	DBG("%s: processing RX ring\n", dev->name);
+ 	int rx_done = ag71xx_rx_packets(ag, limit);
+ 
+-	ag71xx_debugfs_update_napi_stats(ag, rx_done, tx_done);
++//	ag71xx_debugfs_update_napi_stats(ag, rx_done, tx_done);
+ 
+ 	rx_ring = &ag->rx_ring;
+ 	if (rx_ring->buf[rx_ring->dirty % rx_ring->size].rx_buf == NULL)
+@@ -1163,7 +1163,7 @@ static irqreturn_t ag71xx_interrupt(int
+ 		napi_schedule(&ag->napi);
+ 	}
+ 
+-	ag71xx_debugfs_update_int_stats(ag, status);
++//	ag71xx_debugfs_update_int_stats(ag, status);
+ 
+ 	return IRQ_HANDLED;
+ }
