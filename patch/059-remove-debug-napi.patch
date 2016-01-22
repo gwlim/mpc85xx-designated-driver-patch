@@ -18,3 +18,23 @@
  
  	return IRQ_HANDLED;
  }
+--- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
++++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
+@@ -955,7 +955,7 @@ static int ag71xx_tx_packets(struct ag71
+ 
+ //	DBG("%s: processing TX ring\n", ag->dev->name);
+ 
+-	while (ring->dirty + n != ring->curr) {
++	while (ring->curr != ring->dirty + n) {
+ 		unsigned int i = (ring->dirty + n) % ring->size;
+ 		struct ag71xx_desc *desc = ag71xx_ring_desc(ring, i);
+ 		struct sk_buff *skb = ring->buf[i].skb;
+@@ -1021,7 +1021,7 @@ static int ag71xx_rx_packets(struct ag71
+ 		if (ag71xx_desc_empty(desc))
+ 			break;
+ 
+-		if ((ring->dirty + ring->size) == ring->curr) {
++		if (ring->curr == (ring->dirty + ring->size)) {
+ 			ag71xx_assert(0);
+ 			break;
+ 		}
