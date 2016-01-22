@@ -62,9 +62,6 @@ done
 #cp  ./l7-protocols-2009-05-28/protocols/ssl.pat  ./package/network/utils/iptables/files/l7/
 #cp  ./l7-protocols-2009-05-28/protocols/vnc.pat  ./package/network/utils/iptables/files/l7/
 
-echo Remove Upstreamed GCC ARM bug patch
-rm ./toolchain/gcc/patches/4.8-linaro/951-arm_bug_58595.patch
-
 make defconfig
 rm .config
 make defconfig
