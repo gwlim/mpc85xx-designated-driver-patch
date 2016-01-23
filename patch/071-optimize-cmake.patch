@@ -324,3 +324,20 @@ index 0000000..f14e252
 + 
 + SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 + 
+diff --git a/./package/libs/uclient/patches/CMakeList.patch b/./package/libs/uclient/patches/CMakeList.patch
+new file mode 100644
+index 0000000..d1474c0
+--- /dev/null
++++ b/./package/libs/uclient/patches/CMakeList.patch
+@@ -0,0 +1,11 @@
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
++@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6)
++ INCLUDE(CheckIncludeFiles)
++ 
++ PROJECT(uclient C)
++-ADD_DEFINITIONS(-Os -Wall -Werror --std=gnu99 -g3 -Wmissing-declarations)
+++ADD_DEFINITIONS(-Wall -Werror --std=gnu99 -Wmissing-declarations)
++ 
++ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
++ 
