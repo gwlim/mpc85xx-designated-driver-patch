@@ -1,7 +1,12 @@
 --- a/feeds/luci/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi.lua
 +++ b/feeds/luci/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi.lua
-@@ -233,6 +233,19 @@ if hwtype == "mac80211" then
+@@ -232,8 +232,24 @@ if hwtype == "mac80211" then
+ 		end
+ 	end
  
++	noscan=s:taboption("advanced", Flag, "noscan", translate("Force 40MHz mode"),"Always use 40MHz channels even if the secondary channel overlaps. Using this option does not comply with IEEE 802.11n-2009!")
++	noscan.optional = true
++
  	s:taboption("advanced", Value, "frag", translate("Fragmentation Threshold"))
  	s:taboption("advanced", Value, "rts", translate("RTS/CTS Threshold"))
 +
@@ -20,7 +25,7 @@
  end
  
  
-@@ -474,6 +487,22 @@ if hwtype == "mac80211" then
+@@ -475,6 +491,22 @@ if hwtype == "mac80211" then
  	wmm:depends({mode="ap"})
  	wmm:depends({mode="ap-wds"})
  	wmm.default = wmm.enabled
