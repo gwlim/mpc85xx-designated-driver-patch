@@ -11,8 +11,8 @@ index 12bd0ae..adc6c7a 100644
 +	rm -f $(TARGET_DIR)/etc/rc.d/S99igmpproxy
 +	rm -f $(TARGET_DIR)/etc/rc.d/S50sqm
 +	rm -f $(TARGET_DIR)/etc/rc.d/S60etherwake
-+	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
-+	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S95ddns
++	rm -f $(TARGET_DIR)/etc/rc.d/S80relayd
 +	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
 +	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
 +	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
