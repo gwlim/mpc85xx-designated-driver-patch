@@ -1,0 +1,23 @@
+diff --git a/package/Makefile b/package/Makefile
+index 12bd0ae..adc6c7a 100644
+--- a/package/Makefile
++++ b/package/Makefile
+@@ -125,6 +125,18 @@ $(curdir)/install: $(TMP_DIR)/.build $(curdir)/system/opkg/host/install
+ 	$(if $(CONFIG_CLEAN_IPKG),rm -rf $(TARGET_DIR)/usr/lib/opkg)
+ 	$(call mklibs)
+ 
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S95miniupnpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S99igmpproxy
++	rm -f $(TARGET_DIR)/etc/rc.d/S50sqm
++	rm -f $(TARGET_DIR)/etc/rc.d/S60etherwake
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++	rm -f $(TARGET_DIR)/etc/rc.d/S60xl2tpd
++
+ PASSOPT=""
+ PASSARG=""
+ ifndef CONFIG_OPKGSMIME_PASSPHRASE
