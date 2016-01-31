@@ -1,0 +1,58 @@
+--- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_mdio.c
++++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_mdio.c
+@@ -14,7 +14,7 @@
+ #include "ag71xx.h"
+ 
+ #define AG71XX_MDIO_RETRY	1000
+-#define AG71XX_MDIO_DELAY	5
++#define AG71XX_MDIO_DELAY	2
+ 
+ static inline void ag71xx_mdio_wr(struct ag71xx_mdio *am, unsigned reg,
+ 				  u32 value)
+--- a/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
++++ b/target/linux/ar71xx/files/drivers/net/ethernet/atheros/ag71xx/ag71xx_main.c
+@@ -408,7 +408,7 @@ static void ag71xx_dma_reset(struct ag71
+ 	 * give the hardware some time to really stop all rx/tx activity
+ 	 * clearing the descriptors too early causes random memory corruption
+ 	 */
+-	mdelay(1);
++	udelay(500);
+ 
+ 	/* clear descriptor addresses */
+ 	ag71xx_wr(ag, AG71XX_REG_TX_DESC, ag->stop_desc_dma);
+@@ -508,18 +508,18 @@ static void ag71xx_hw_init(struct ag71xx
+ 		reset_mask &= ~(AR71XX_RESET_GE0_PHY | AR71XX_RESET_GE1_PHY);
+ 
+ 		ath79_device_reset_set(reset_phy);
+-		msleep(50);
++		msleep(25);
+ 		ath79_device_reset_clear(reset_phy);
+-		msleep(200);
++		msleep(100);
+ 	}
+ 
+ 	ag71xx_sb(ag, AG71XX_REG_MAC_CFG1, MAC_CFG1_SR);
+-	udelay(20);
++	udelay(10);
+ 
+ 	ath79_device_reset_set(reset_mask);
+-	msleep(100);
++	msleep(50);
+ 	ath79_device_reset_clear(reset_mask);
+-	msleep(200);
++	msleep(100);
+ 
+ 	ag71xx_hw_setup(ag);
+ 
+@@ -541,9 +541,9 @@ static void ag71xx_fast_reset(struct ag7
+ 	tx_ds = ag71xx_rr(ag, AG71XX_REG_TX_DESC);
+ 
+ 	ath79_device_reset_set(reset_mask);
+-	udelay(10);
++	udelay(5);
+ 	ath79_device_reset_clear(reset_mask);
+-	udelay(10);
++	udelay(5);
+ 
+ 	ag71xx_dma_reset(ag);
+ 	ag71xx_hw_setup(ag);
