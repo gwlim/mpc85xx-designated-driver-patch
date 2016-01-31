@@ -1,8 +1,8 @@
-diff --git a/./target/linux/generic/patches-4.1/999-inline-kfree_skbmem.patch b/./target/linux/generic/patches-4.1/999-inline-kfree_skbmem.patch
+diff --git a/./target/linux/generic/patches-4.4/999-inline-kfree_skbmem.patch b/./target/linux/generic/patches-4.4/999-inline-kfree_skbmem.patch
 new file mode 100644
 index 0000000..5a4086d
 --- /dev/null
-+++ b/./target/linux/generic/patches-4.1/999-inline-kfree_skbmem.patch
++++ b/./target/linux/generic/patches-4.4/999-inline-kfree_skbmem.patch
 @@ -0,0 +1,11 @@
 +--- a/net/core/skbuff.c
 ++++ b/net/core/skbuff.c

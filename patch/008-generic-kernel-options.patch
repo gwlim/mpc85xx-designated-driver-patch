@@ -1,7 +1,7 @@
-diff --git a/target/linux/generic/config-4.1 b/target/linux/generic/config-4.1
+diff --git a/target/linux/generic/config-4.4 b/target/linux/generic/config-4.4
 index 0f76041..ba15ef4 100644
---- a/target/linux/generic/config-4.1
-+++ b/target/linux/generic/config-4.1
+--- a/target/linux/generic/config-4.4
++++ b/target/linux/generic/config-4.4
 @@ -505,7 +505,7 @@ CONFIG_BOOKE_WDT_DEFAULT_TIMEOUT=3
  CONFIG_BOOT_RAW=y
  # CONFIG_BPCTL is not set

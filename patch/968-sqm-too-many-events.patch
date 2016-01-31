@@ -1,8 +1,8 @@
-diff --git a/./target/linux/generic/patches-4.1/968-sqm-too-many-events.patch b/./target/linux/generic/patches-4.1/968-sqm-too-many-events.patch
+diff --git a/./target/linux/generic/patches-4.4/968-sqm-too-many-events.patch b/./target/linux/generic/patches-4.4/968-sqm-too-many-events.patch
 new file mode 100644
 index 0000000..ae0cd25
 --- /dev/null
-+++ b/./target/linux/generic/patches-4.1/968-sqm-too-many-events.patch
++++ b/./target/linux/generic/patches-4.4/968-sqm-too-many-events.patch
 @@ -0,0 +1,11 @@
 +--- a/net/sched/sch_htb.c
 ++++ b/net/sched/sch_htb.c
