@@ -1,0 +1,30 @@
+--- /dev/null	2015-01-16 19:01:38.273293178 +0800
++++ ./target/linux/mpc85xx/patches-4.4/221-gianfar-reduce-buffer-napiweight.patch	2015-01-18 21:40:14.242417023 +0800
+@@ -0,0 +1,27 @@
++--- a/drivers/net/ethernet/freescale/gianfar.h	2015-01-18 21:25:45.000000000 +0800
+++++ b/drivers/net/ethernet/freescale/gianfar.h	2015-01-18 21:37:53.406069919 +0800
++@@ -58,7 +58,7 @@ struct ethtool_rx_list {
++ };
++ 
++ /* The maximum number of packets to be handled in one call of gfar_poll */
++-#define GFAR_DEV_WEIGHT 64
+++#define GFAR_DEV_WEIGHT 32
++ 
++ /* Length for FCB */
++ #define GMAC_FCB_LEN 8
++@@ -90,11 +90,11 @@ extern const char gfar_driver_version[];
++ #define MAXGROUPS 0x2
++ 
++ /* These need to be powers of 2 for this driver */
++-#define DEFAULT_TX_RING_SIZE	256
++-#define DEFAULT_RX_RING_SIZE	256
+++#define DEFAULT_TX_RING_SIZE	128
+++#define DEFAULT_RX_RING_SIZE	128
++ 
++-#define GFAR_RX_MAX_RING_SIZE   256
++-#define GFAR_TX_MAX_RING_SIZE   256
+++#define GFAR_RX_MAX_RING_SIZE   128
+++#define GFAR_TX_MAX_RING_SIZE   128
++ 
++ #define GFAR_MAX_FIFO_THRESHOLD 511
++ #define GFAR_MAX_FIFO_STARVE	511

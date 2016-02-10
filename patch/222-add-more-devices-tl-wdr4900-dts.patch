@@ -1,0 +1,144 @@
+--- /dev/null
++++ ./target/linux/mpc85xx/patches-4.4/222-add-devices-tl-wdr4900-dts.patch
+@@ -0,0 +1,141 @@
++--- a/arch/powerpc/boot/dts/tl-wdr4900-v1.dts
+++++ b/arch/powerpc/boot/dts/tl-wdr4900-v1.dts
++@@ -26,6 +26,17 @@
++ 		spi0 = &spi0;
++ 	};
++ 
+++	cpus {
+++		#address-cells = <1>;
+++		#size-cells = <0>;
+++
+++		PowerPC,P1014@0 {
+++			device_type = "cpu";
+++			reg = <0x0>;
+++			next-level-cache = <&L2>;
+++		};
+++	};
+++
++ 	memory {
++ 		device_type = "memory";
++ 	};
++@@ -116,8 +127,26 @@
++ 		};
++ 
++ 		enet0: ethernet@b0000 {
+++			#address-cells = <1>;
+++			#size-cells = <1>;
+++			device_type = "network";
+++			model = "eTSEC";
+++			compatible = "fsl,etsec2";
+++			fsl,num_rx_queues = <0x8>;
+++			fsl,num_tx_queues = <0x8>;
+++			
+++			
++ 			phy-handle = <&phy0>;
++ 			phy-connection-type = "rgmii-id";
+++
+++			
+++			
+++			
+++			
+++			
+++			
+++			
+++			
++ 		};
++ 
++ 		enet1: ethernet@b1000 {
++@@ -131,6 +160,15 @@
++ 		sdhc@2e000 {
++ 			status = "disabled";
++ 		};
+++ 
+++		mpic: pic@40000 {
+++			interrupt-controller;
+++			#address-cells = <0>;
+++			#interrupt-cells = <2>;
+++			reg = <0x40000 0x40000>;
+++			compatible = "chrp,open-pic";
+++			device_type = "open-pic";
+++		};
++ 
++ 		serial1: serial@4600 {
++ 			status = "disabled";
++@@ -143,6 +181,52 @@
++ 		can1: can@1d000 {
++ 			status = "disabled";
++ 		};
+++
+++		L2: l2-cache-controller@20000 {
+++			compatible = "fsl,p1014-l2-cache-controller";
+++			reg = <0x20000 0x1000>;
+++			cache-line-size = <32>;	// 32 bytes
+++			cache-size = <0x40000>; // L2,256K
+++			
+++			interrupts = <16 2>;
+++		};
+++
+++		dma@21300 {
+++			#address-cells = <1>;
+++			#size-cells = <1>;
+++			compatible = "fsl,eloplus-dma";
+++			reg = <0x21300 0x4>;
+++			ranges = <0x0 0x21100 0x200>;
+++			cell-index = <0>;
+++			dma-channel@0 {
+++				compatible = "fsl,eloplus-dma-channel";
+++				reg = <0x0 0x80>;
+++				cell-index = <0>;
+++				
+++				interrupts = <20 2>;
+++			};
+++			dma-channel@80 {
+++				compatible = "fsl,eloplus-dma-channel";
+++				reg = <0x80 0x80>;
+++				cell-index = <1>;
+++				
+++				interrupts = <21 2>;
+++			};
+++			dma-channel@100 {
+++				compatible = "fsl,eloplus-dma-channel";
+++				reg = <0x100 0x80>;
+++				cell-index = <2>;
+++				
+++				interrupts = <22 2>;
+++			};
+++			dma-channel@180 {
+++				compatible = "fsl,eloplus-dma-channel";
+++				reg = <0x180 0x80>;
+++				cell-index = <3>;
+++				
+++				interrupts = <23 2>;
+++			};
+++		};
++ 	};
++ 
++ 	pci0: pcie@ffe09000 {
++@@ -196,6 +280,11 @@
++ 			gpios = <&gpio0 4 1>; /* active low */
++ 			label = "tp-link:green:usb2";
++ 		};
+++
+++		usbpower {
+++			gpios = <&gpio0 10 1>; /* active low */
+++			label = "tp-link:usb:power";
+++		};
++ 	};
++ 
++ 	buttons {
++@@ -206,6 +295,12 @@
++ 			gpios = <&gpio0 5 1>; /* active low */
++ 			linux,code = <0x198>; /* KEY_RESTART */
++ 		};
+++
+++		rfkill {
+++			label = "RFKILL switch";
+++			gpios = <&gpio0 11 1>; /* active low */
+++			linux,code = <0xf7>; /* RFKill */
+++		};
++ 	};
++ };
++ 
