@@ -7,10 +7,10 @@ index 3434d89..f64242b 100644
  	--enable-languages=$(TARGET_LANGUAGES) \
  	--enable-shared \
 -	--enable-threads \
-+	--enable-threads=posix
++	--enable-threads=posix --enable-libstdcxx-threads \
  	--with-slibdir=$(TOOLCHAIN_DIR)/lib \
  	--enable-lto \
-+	--enable-libstdcxx-threads \
++	--with-cpu=8548 \
 +	--disable-nls \
  	--with-libelf=$(TOPDIR)/staging_dir/host
  
