@@ -7,7 +7,7 @@ index 3434d89..f64242b 100644
  	--enable-languages=$(TARGET_LANGUAGES) \
  	--enable-shared \
 -	--enable-threads \
-+	--enable-threads=posix --enable-libstdcxx-threads \
++	--enable-threads=posix \
  	--with-slibdir=$(TOOLCHAIN_DIR)/lib \
  	--enable-lto \
 +	--with-cpu=8548 \
