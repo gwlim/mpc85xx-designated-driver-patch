@@ -1,9 +1,9 @@
 diff --git a/./target/linux/mpc85xx/patches-4.4/221-gianfar-reduce-buffer-napiweight.patch b/./target/linux/mpc85xx/patches-4.4/221-gianfar-reduce-buffer-napiweight.patch
 new file mode 100644
-index 0000000..40891c0
+index 0000000..394ae49
 --- /dev/null
 +++ b/./target/linux/mpc85xx/patches-4.4/221-gianfar-reduce-buffer-napiweight.patch
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,43 @@
 +--- a/drivers/net/ethernet/freescale/gianfar.h	2015-01-18 21:25:45.000000000 +0800
 ++++ b/drivers/net/ethernet/freescale/gianfar.h	2015-01-18 21:37:53.406069919 +0800
 +@@ -57,7 +57,7 @@ struct ethtool_rx_list {
@@ -15,6 +15,19 @@ index 0000000..40891c0
 + 
 + /* Length for FCB */
 + #define GMAC_FCB_LEN 8
++@@ -66,10 +66,10 @@ struct ethtool_rx_list {
++ #define GMAC_TXPAL_LEN 16
++ 
++ /* Default padding amount */
++-#define DEFAULT_PADDING 2
+++#define DEFAULT_PADDING 2
++ 
++ /* Number of bytes to align the rx bufs to */
++-#define RXBUF_ALIGNMENT 64
+++#define RXBUF_ALIGNMENT 64
++ 
++ #define PHY_INIT_TIMEOUT 100000
++ 
 +@@ -84,13 +84,13 @@ extern const char gfar_driver_version[];
 + #define MAXGROUPS 0x2
 + 
@@ -22,13 +35,14 @@ index 0000000..40891c0
 +-#define DEFAULT_TX_RING_SIZE	256
 +-#define DEFAULT_RX_RING_SIZE	256
 ++#define DEFAULT_TX_RING_SIZE	128
-++#define DEFAULT_RX_RING_SIZE	128
+++#define DEFAULT_RX_RING_SIZE	256
 + 
-+ #define GFAR_RX_BUFF_ALLOC	16
++-#define GFAR_RX_BUFF_ALLOC	16
+++#define GFAR_RX_BUFF_ALLOC	32
 + 
 +-#define GFAR_RX_MAX_RING_SIZE   256
 +-#define GFAR_TX_MAX_RING_SIZE   256
-++#define GFAR_RX_MAX_RING_SIZE   128
+++#define GFAR_RX_MAX_RING_SIZE   256
 ++#define GFAR_TX_MAX_RING_SIZE   128
 + 
 + #define GFAR_MAX_FIFO_THRESHOLD 511

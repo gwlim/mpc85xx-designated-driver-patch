@@ -1,0 +1,1834 @@
+diff --git a/./target/linux/mpc85xx/patches-4.4/223-optimisation-flush_icache_range.patch b/./target/linux/mpc85xx/patches-4.4/223-optimisation-flush_icache_range.patch
+new file mode 100644
+index 0000000..da2aad6
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/223-optimisation-flush_icache_range.patch
+@@ -0,0 +1,15 @@
++--- a/arch/powerpc/kernel/misc_32.S
+++++ b/arch/powerpc/kernel/misc_32.S
++@@ -350,10 +350,9 @@ BEGIN_FTR_SECTION
++ 	PURGE_PREFETCHED_INS
++ 	blr				/* for 601, do nothing */
++ END_FTR_SECTION_IFSET(CPU_FTR_COHERENT_ICACHE)
++-	li	r5,L1_CACHE_BYTES-1
++-	andc	r3,r3,r5
+++	rlwinm	r3,r3,0,0,31 - L1_CACHE_SHIFT
++ 	subf	r4,r3,r4
++-	add	r4,r4,r5
+++	addi	r4,r4,L1_CACHE_BYTES - 1
++ 	srwi.	r4,r4,L1_CACHE_SHIFT
++ 	beqlr
++ 	mtctr	r4
+diff --git a/./target/linux/mpc85xx/patches-4.4/224-powerpc32-move-xxxxx_dcache_range-functions-inline.patch b/./target/linux/mpc85xx/patches-4.4/224-powerpc32-move-xxxxx_dcache_range-functions-inline.patch
+new file mode 100644
+index 0000000..afeef94
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/224-powerpc32-move-xxxxx_dcache_range-functions-inline.patch
+@@ -0,0 +1,156 @@
++diff --git a/arch/powerpc/include/asm/cacheflush.h b/arch/powerpc/include/asm/cacheflush.h
++index 6229e6b..97c9978 100644
++--- a/arch/powerpc/include/asm/cacheflush.h
+++++ b/arch/powerpc/include/asm/cacheflush.h
++@@ -47,12 +47,58 @@ static inline void __flush_dcache_icache_phys(unsigned long physaddr)
++ }
++ #endif
++ 
++-extern void flush_dcache_range(unsigned long start, unsigned long stop);
++ #ifdef CONFIG_PPC32
++-extern void clean_dcache_range(unsigned long start, unsigned long stop);
++-extern void invalidate_dcache_range(unsigned long start, unsigned long stop);
+++/*
+++ * Write any modified data cache blocks out to memory and invalidate them.
+++ * Does not invalidate the corresponding instruction cache blocks.
+++ */
+++static inline void flush_dcache_range(unsigned long start, unsigned long stop)
+++{
+++	void *addr = (void *)(start & ~(L1_CACHE_BYTES - 1));
+++	unsigned long size = stop - (unsigned long)addr + (L1_CACHE_BYTES - 1);
+++	unsigned long i;
+++
+++	for (i = 0; i < size >> L1_CACHE_SHIFT; i++, addr += L1_CACHE_BYTES)
+++		dcbf(addr);
+++	mb();	/* sync */
+++}
+++
+++/*
+++ * Write any modified data cache blocks out to memory.
+++ * Does not invalidate the corresponding cache lines (especially for
+++ * any corresponding instruction cache).
+++ */
+++static inline void clean_dcache_range(unsigned long start, unsigned long stop)
+++{
+++	void *addr = (void *)(start & ~(L1_CACHE_BYTES - 1));
+++	unsigned long size = stop - (unsigned long)addr + (L1_CACHE_BYTES - 1);
+++	unsigned long i;
+++
+++	for (i = 0; i < size >> L1_CACHE_SHIFT; i++, addr += L1_CACHE_BYTES)
+++		dcbst(addr);
+++	mb();	/* sync */
+++}
+++
+++/*
+++ * Like above, but invalidate the D-cache.  This is used by the 8xx
+++ * to invalidate the cache so the PPC core doesn't get stale data
+++ * from the CPM (no cache snooping here :-).
+++ */
+++static inline void invalidate_dcache_range(unsigned long start,
+++					   unsigned long stop)
+++{
+++	void *addr = (void *)(start & ~(L1_CACHE_BYTES - 1));
+++	unsigned long size = stop - (unsigned long)addr + (L1_CACHE_BYTES - 1);
+++	unsigned long i;
+++
+++	for (i = 0; i < size >> L1_CACHE_SHIFT; i++, addr += L1_CACHE_BYTES)
+++		dcbi(addr);
+++	mb();	/* sync */
+++}
+++
++ #endif /* CONFIG_PPC32 */
++ #ifdef CONFIG_PPC64
+++extern void flush_dcache_range(unsigned long start, unsigned long stop);
++ extern void flush_inval_dcache_range(unsigned long start, unsigned long stop);
++ extern void flush_dcache_phys_range(unsigned long start, unsigned long stop);
++ #endif
++diff --git a/arch/powerpc/kernel/misc_32.S b/arch/powerpc/kernel/misc_32.S
++index 181afc1..09e1e5d 100644
++--- a/arch/powerpc/kernel/misc_32.S
+++++ b/arch/powerpc/kernel/misc_32.S
++@@ -375,71 +375,6 @@ END_FTR_SECTION_IFSET(CPU_FTR_COHERENT_ICACHE)
++ 	isync
++ 	blr
++ /*
++- * Write any modified data cache blocks out to memory.
++- * Does not invalidate the corresponding cache lines (especially for
++- * any corresponding instruction cache).
++- *
++- * clean_dcache_range(unsigned long start, unsigned long stop)
++- */
++-_GLOBAL(clean_dcache_range)
++-	li	r5,L1_CACHE_BYTES-1
++-	andc	r3,r3,r5
++-	subf	r4,r3,r4
++-	add	r4,r4,r5
++-	srwi.	r4,r4,L1_CACHE_SHIFT
++-	beqlr
++-	mtctr	r4
++-
++-1:	dcbst	0,r3
++-	addi	r3,r3,L1_CACHE_BYTES
++-	bdnz	1b
++-	sync				/* wait for dcbst's to get to ram */
++-	blr
++-
++-/*
++- * Write any modified data cache blocks out to memory and invalidate them.
++- * Does not invalidate the corresponding instruction cache blocks.
++- *
++- * flush_dcache_range(unsigned long start, unsigned long stop)
++- */
++-_GLOBAL(flush_dcache_range)
++-	li	r5,L1_CACHE_BYTES-1
++-	andc	r3,r3,r5
++-	subf	r4,r3,r4
++-	add	r4,r4,r5
++-	srwi.	r4,r4,L1_CACHE_SHIFT
++-	beqlr
++-	mtctr	r4
++-
++-1:	dcbf	0,r3
++-	addi	r3,r3,L1_CACHE_BYTES
++-	bdnz	1b
++-	sync				/* wait for dcbst's to get to ram */
++-	blr
++-
++-/*
++- * Like above, but invalidate the D-cache.  This is used by the 8xx
++- * to invalidate the cache so the PPC core doesn't get stale data
++- * from the CPM (no cache snooping here :-).
++- *
++- * invalidate_dcache_range(unsigned long start, unsigned long stop)
++- */
++-_GLOBAL(invalidate_dcache_range)
++-	li	r5,L1_CACHE_BYTES-1
++-	andc	r3,r3,r5
++-	subf	r4,r3,r4
++-	add	r4,r4,r5
++-	srwi.	r4,r4,L1_CACHE_SHIFT
++-	beqlr
++-	mtctr	r4
++-
++-1:	dcbi	0,r3
++-	addi	r3,r3,L1_CACHE_BYTES
++-	bdnz	1b
++-	sync				/* wait for dcbi's to get to ram */
++-	blr
++-
++-/*
++  * Flush a particular page from the data cache to RAM.
++  * Note: this is necessary because the instruction cache does *not*
++  * snoop from the data cache.
++diff --git a/arch/powerpc/kernel/ppc_ksyms.c b/arch/powerpc/kernel/ppc_ksyms.c
++index 41e1607..3236679 100644
++--- a/arch/powerpc/kernel/ppc_ksyms.c
+++++ b/arch/powerpc/kernel/ppc_ksyms.c
++@@ -6,7 +6,9 @@
++ #include <asm/cacheflush.h>
++ #include <asm/epapr_hcalls.h>
++ 
+++#ifdef CONFIG_PPC64
++ EXPORT_SYMBOL(flush_dcache_range);
+++#endif
++ EXPORT_SYMBOL(flush_icache_range);
++ 
++ EXPORT_SYMBOL(empty_zero_page);
+diff --git a/./target/linux/mpc85xx/patches-4.4/225-powerpc32-Remove-clear_pages-and-define-clear_page-inline.patch b/./target/linux/mpc85xx/patches-4.4/225-powerpc32-Remove-clear_pages-and-define-clear_page-inline.patch
+new file mode 100644
+index 0000000..76ae55b
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/225-powerpc32-Remove-clear_pages-and-define-clear_page-inline.patch
+@@ -0,0 +1,74 @@
++diff --git a/arch/powerpc/include/asm/page_32.h b/arch/powerpc/include/asm/page_32.h
++index 68d73b2..6a8e179 100644
++--- a/arch/powerpc/include/asm/page_32.h
+++++ b/arch/powerpc/include/asm/page_32.h
++@@ -1,6 +1,8 @@
++ #ifndef _ASM_POWERPC_PAGE_32_H
++ #define _ASM_POWERPC_PAGE_32_H
++ 
+++#include <asm/cache.h>
+++
++ #if defined(CONFIG_PHYSICAL_ALIGN) && (CONFIG_PHYSICAL_START != 0)
++ #if (CONFIG_PHYSICAL_START % CONFIG_PHYSICAL_ALIGN) != 0
++ #error "CONFIG_PHYSICAL_START must be a multiple of CONFIG_PHYSICAL_ALIGN"
++@@ -36,9 +38,18 @@ typedef unsigned long long pte_basic_t;
++ typedef unsigned long pte_basic_t;
++ #endif
++ 
++-struct page;
++-extern void clear_pages(void *page, int order);
++-static inline void clear_page(void *page) { clear_pages(page, 0); }
+++/*
+++ * Clear page using the dcbz instruction, which doesn't cause any
+++ * memory traffic (except to write out any cache lines which get
+++ * displaced).  This only works on cacheable memory.
+++ */
+++static inline void clear_page(void *addr)
+++{
+++	unsigned int i;
+++
+++	for (i = 0; i < PAGE_SIZE / L1_CACHE_BYTES; i++, addr += L1_CACHE_BYTES)
+++		dcbz(addr);
+++}
++ extern void copy_page(void *to, void *from);
++ 
++ #include <asm-generic/getorder.h>
++diff --git a/arch/powerpc/kernel/misc_32.S b/arch/powerpc/kernel/misc_32.S
++index 7d1284f..181afc1 100644
++--- a/arch/powerpc/kernel/misc_32.S
+++++ b/arch/powerpc/kernel/misc_32.S
++@@ -517,22 +517,6 @@ END_FTR_SECTION_IFSET(CPU_FTR_COHERENT_ICACHE)
++ #endif /* CONFIG_BOOKE */
++ 
++ /*
++- * Clear pages using the dcbz instruction, which doesn't cause any
++- * memory traffic (except to write out any cache lines which get
++- * displaced).  This only works on cacheable memory.
++- *
++- * void clear_pages(void *page, int order) ;
++- */
++-_GLOBAL(clear_pages)
++-	li	r0,PAGE_SIZE/L1_CACHE_BYTES
++-	slw	r0,r0,r4
++-	mtctr	r0
++-1:	dcbz	0,r3
++-	addi	r3,r3,L1_CACHE_BYTES
++-	bdnz	1b
++-	blr
++-
++-/*
++  * Copy a whole page.  We use the dcbz instruction on the destination
++  * to reduce memory traffic (it eliminates the unnecessary reads of
++  * the destination into cache).  This requires that the destination
++diff --git a/arch/powerpc/kernel/ppc_ksyms_32.c b/arch/powerpc/kernel/ppc_ksyms_32.c
++index 30ddd8a..2bfaafe 100644
++--- a/arch/powerpc/kernel/ppc_ksyms_32.c
+++++ b/arch/powerpc/kernel/ppc_ksyms_32.c
++@@ -10,7 +10,6 @@
++ #include <asm/pgtable.h>
++ #include <asm/dcr.h>
++ 
++-EXPORT_SYMBOL(clear_pages);
++ EXPORT_SYMBOL(ISA_DMA_THRESHOLD);
++ EXPORT_SYMBOL(DMA_MODE_READ);
++ EXPORT_SYMBOL(DMA_MODE_WRITE);
+diff --git a/./target/linux/mpc85xx/patches-4.4/226-powerpc-add-inline-functions-for-cache-related-instructions.patch b/./target/linux/mpc85xx/patches-4.4/226-powerpc-add-inline-functions-for-cache-related-instructions.patch
+new file mode 100644
+index 0000000..f26f6f0
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/226-powerpc-add-inline-functions-for-cache-related-instructions.patch
+@@ -0,0 +1,30 @@
++diff --git a/arch/powerpc/include/asm/cache.h b/arch/powerpc/include/asm/cache.h
++index 5f8229e..ffbafbf 100644
++--- a/arch/powerpc/include/asm/cache.h
+++++ b/arch/powerpc/include/asm/cache.h
++@@ -69,6 +69,25 @@ extern void _set_L3CR(unsigned long);
++ #define _set_L3CR(val)	do { } while(0)
++ #endif
++ 
+++static inline void dcbz(void *addr)
+++{
+++	__asm__ __volatile__ ("dcbz 0, %0" : : "r"(addr) : "memory");
+++}
+++
+++static inline void dcbi(void *addr)
+++{
+++	__asm__ __volatile__ ("dcbi 0, %0" : : "r"(addr) : "memory");
+++}
+++
+++static inline void dcbf(void *addr)
+++{
+++	__asm__ __volatile__ ("dcbf 0, %0" : : "r"(addr) : "memory");
+++}
+++
+++static inline void dcbst(void *addr)
+++{
+++	__asm__ __volatile__ ("dcbst 0, %0" : : "r"(addr) : "memory");
+++}
++ #endif /* !__ASSEMBLY__ */
++ #endif /* __KERNEL__ */
++ #endif /* _ASM_POWERPC_CACHE_H */
+diff --git a/./target/linux/mpc85xx/patches-4.4/227-powerpc-8xx-Save-r3-all-the-time-in-DTLB-miss-handler.patch b/./target/linux/mpc85xx/patches-4.4/227-powerpc-8xx-Save-r3-all-the-time-in-DTLB-miss-handler.patch
+new file mode 100644
+index 0000000..fe20c8b
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/227-powerpc-8xx-Save-r3-all-the-time-in-DTLB-miss-handler.patch
+@@ -0,0 +1,42 @@
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index e629e28..a89492e 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -385,23 +385,20 @@ InstructionTLBMiss:
++ 
++ 	. = 0x1200
++ DataStoreTLBMiss:
++-#ifdef CONFIG_8xx_CPU6
++ 	mtspr	SPRN_SPRG_SCRATCH2, r3
++-#endif
++ 	EXCEPTION_PROLOG_0
++-	mfcr	r10
+++	mfcr	r3
++ 
++ 	/* If we are faulting a kernel address, we have to use the
++ 	 * kernel page tables.
++ 	 */
++-	mfspr	r11, SPRN_MD_EPN
++-	IS_KERNEL(r11, r11)
+++	mfspr	r10, SPRN_MD_EPN
+++	IS_KERNEL(r11, r10)
++ 	mfspr	r11, SPRN_M_TW	/* Get level 1 table */
++ 	BRANCH_UNLESS_KERNEL(3f)
++ 	lis	r11, (swapper_pg_dir-PAGE_OFFSET)@ha
++ 3:
++-	mtcr	r10
++-	mfspr	r10, SPRN_MD_EPN
+++	mtcr	r3
++ 
++ 	/* Insert level 1 index */
++ 	rlwimi	r11, r10, 32 - ((PAGE_SHIFT - 2) << 1), (PAGE_SHIFT - 2) << 1, 29
++@@ -453,9 +450,7 @@ DataStoreTLBMiss:
++ 	MTSPR_CPU6(SPRN_MD_RPN, r10, r3)	/* Update TLB entry */
++ 
++ 	/* Restore registers */
++-#ifdef CONFIG_8xx_CPU6
++ 	mfspr	r3, SPRN_SPRG_SCRATCH2
++-#endif
++ 	mtspr	SPRN_DAR, r11	/* Tag DAR */
++ 	EXCEPTION_EPILOG_0
++ 	rfi
+diff --git a/./target/linux/mpc85xx/patches-4.4/228-powerpc-8xx-Map-linear-kernel-RAM-with-8M-pages.patch b/./target/linux/mpc85xx/patches-4.4/228-powerpc-8xx-Map-linear-kernel-RAM-with-8M-pages.patch
+new file mode 100644
+index 0000000..7cabf86
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/228-powerpc-8xx-Map-linear-kernel-RAM-with-8M-pages.patch
+@@ -0,0 +1,217 @@
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index a89492e..87d1f5f 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -398,11 +398,13 @@ DataStoreTLBMiss:
++ 	BRANCH_UNLESS_KERNEL(3f)
++ 	lis	r11, (swapper_pg_dir-PAGE_OFFSET)@ha
++ 3:
++-	mtcr	r3
++ 
++ 	/* Insert level 1 index */
++ 	rlwimi	r11, r10, 32 - ((PAGE_SHIFT - 2) << 1), (PAGE_SHIFT - 2) << 1, 29
++ 	lwz	r11, (swapper_pg_dir-PAGE_OFFSET)@l(r11)	/* Get the level 1 entry */
+++	mtcr	r11
+++	bt-	28,DTLBMiss8M		/* bit 28 = Large page (8M) */
+++	mtcr	r3
++ 
++ 	/* We have a pte table, so load fetch the pte from the table.
++ 	 */
++@@ -455,6 +457,29 @@ DataStoreTLBMiss:
++ 	EXCEPTION_EPILOG_0
++ 	rfi
++ 
+++DTLBMiss8M:
+++	mtcr	r3
+++	ori	r11, r11, MD_SVALID
+++	MTSPR_CPU6(SPRN_MD_TWC, r11, r3)
+++#ifdef CONFIG_PPC_16K_PAGES
+++	/*
+++	 * In 16k pages mode, each PGD entry defines a 64M block.
+++	 * Here we select the 8M page within the block.
+++	 */
+++	rlwimi	r11, r10, 0, 0x03800000
+++#endif
+++	rlwinm	r10, r11, 0, 0xff800000
+++	ori	r10, r10, 0xf0 | MD_SPS16K | _PAGE_SHARED | _PAGE_DIRTY	| \
+++			  _PAGE_PRESENT
+++	MTSPR_CPU6(SPRN_MD_RPN, r10, r3)	/* Update TLB entry */
+++
+++	li	r11, RPN_PATTERN
+++	mfspr	r3, SPRN_SPRG_SCRATCH2
+++	mtspr	SPRN_DAR, r11	/* Tag DAR */
+++	EXCEPTION_EPILOG_0
+++	rfi
+++
+++
++ /* This is an instruction TLB error on the MPC8xx.  This could be due
++  * to many reasons, such as executing guarded memory or illegal instruction
++  * addresses.  There is nothing to do but handle a big time error fault.
++@@ -532,13 +557,15 @@ FixupDAR:/* Entry point for dcbx workaround. */
++ 	/* Insert level 1 index */
++ 3:	rlwimi	r11, r10, 32 - ((PAGE_SHIFT - 2) << 1), (PAGE_SHIFT - 2) << 1, 29
++ 	lwz	r11, (swapper_pg_dir-PAGE_OFFSET)@l(r11)	/* Get the level 1 entry */
+++	mtcr	r11
+++	bt	28,200f		/* bit 28 = Large page (8M) */
++ 	rlwinm	r11, r11,0,0,19	/* Extract page descriptor page address */
++ 	/* Insert level 2 index */
++ 	rlwimi	r11, r10, 32 - (PAGE_SHIFT - 2), 32 - PAGE_SHIFT, 29
++ 	lwz	r11, 0(r11)	/* Get the pte */
++ 	/* concat physical page address(r11) and page offset(r10) */
++ 	rlwimi	r11, r10, 0, 32 - PAGE_SHIFT, 31
++-	lwz	r11,0(r11)
+++201:	lwz	r11,0(r11)
++ /* Check if it really is a dcbx instruction. */
++ /* dcbt and dcbtst does not generate DTLB Misses/Errors,
++  * no need to include them here */
++@@ -557,6 +584,10 @@ FixupDAR:/* Entry point for dcbx workaround. */
++ 141:	mfspr	r10,SPRN_SPRG_SCRATCH2
++ 	b	DARFixed	/* Nope, go back to normal TLB processing */
++ 
+++	/* concat physical page address(r11) and page offset(r10) */
+++200:	rlwimi	r11, r10, 0, 32 - (PAGE_SHIFT << 1), 31
+++	b	201b
+++
++ 144:	mfspr	r10, SPRN_DSISR
++ 	rlwinm	r10, r10,0,7,5	/* Clear store bit for buggy dcbst insn */
++ 	mtspr	SPRN_DSISR, r10
++diff --git a/arch/powerpc/mm/8xx_mmu.c b/arch/powerpc/mm/8xx_mmu.c
++new file mode 100644
++index 0000000..2d42745
++--- /dev/null
+++++ b/arch/powerpc/mm/8xx_mmu.c
++@@ -0,0 +1,83 @@
+++/*
+++ * This file contains the routines for initializing the MMU
+++ * on the 8xx series of chips.
+++ *  -- christophe
+++ *
+++ *  Derived from arch/powerpc/mm/40x_mmu.c:
+++ *
+++ *  This program is free software; you can redistribute it and/or
+++ *  modify it under the terms of the GNU General Public License
+++ *  as published by the Free Software Foundation; either version
+++ *  2 of the License, or (at your option) any later version.
+++ *
+++ */
+++
+++#include <linux/memblock.h>
+++
+++#include "mmu_decl.h"
+++
+++extern int __map_without_ltlbs;
+++/*
+++ * MMU_init_hw does the chip-specific initialization of the MMU hardware.
+++ */
+++void __init MMU_init_hw(void)
+++{
+++	/* Nothing to do for the time being but keep it similar to other PPC */
+++}
+++
+++#define LARGE_PAGE_SIZE_4M	(1<<22)
+++#define LARGE_PAGE_SIZE_8M	(1<<23)
+++#define LARGE_PAGE_SIZE_64M	(1<<26)
+++
+++unsigned long __init mmu_mapin_ram(unsigned long top)
+++{
+++	unsigned long v, s, mapped;
+++	phys_addr_t p;
+++
+++	v = KERNELBASE;
+++	p = 0;
+++	s = top;
+++
+++	if (__map_without_ltlbs)
+++		return 0;
+++
+++#ifdef CONFIG_PPC_4K_PAGES
+++	while (s >= LARGE_PAGE_SIZE_8M) {
+++		pmd_t *pmdp;
+++		unsigned long val = p | MD_PS8MEG;
+++
+++		pmdp = pmd_offset(pud_offset(pgd_offset_k(v), v), v);
+++		*pmdp++ = __pmd(val);
+++		*pmdp++ = __pmd(val + LARGE_PAGE_SIZE_4M);
+++
+++		v += LARGE_PAGE_SIZE_8M;
+++		p += LARGE_PAGE_SIZE_8M;
+++		s -= LARGE_PAGE_SIZE_8M;
+++	}
+++#else /* CONFIG_PPC_16K_PAGES */
+++	while (s >= LARGE_PAGE_SIZE_64M) {
+++		pmd_t *pmdp;
+++		unsigned long val = p | MD_PS8MEG;
+++
+++		pmdp = pmd_offset(pud_offset(pgd_offset_k(v), v), v);
+++		*pmdp++ = __pmd(val);
+++
+++		v += LARGE_PAGE_SIZE_64M;
+++		p += LARGE_PAGE_SIZE_64M;
+++		s -= LARGE_PAGE_SIZE_64M;
+++	}
+++#endif
+++
+++	mapped = top - s;
+++
+++	/* If the size of RAM is not an exact power of two, we may not
+++	 * have covered RAM in its entirety with 8 MiB
+++	 * pages. Consequently, restrict the top end of RAM currently
+++	 * allocable so that calls to the MEMBLOCK to allocate PTEs for "tail"
+++	 * coverage with normal-sized pages (or other reasons) do not
+++	 * attempt to allocate outside the allowed range.
+++	 */
+++	memblock_set_current_limit(mapped);
+++
+++	return mapped;
+++}
++diff --git a/arch/powerpc/mm/Makefile b/arch/powerpc/mm/Makefile
++index 1ffeda8..adfee3f 100644
++--- a/arch/powerpc/mm/Makefile
+++++ b/arch/powerpc/mm/Makefile
++@@ -25,6 +25,7 @@ obj-$(CONFIG_PPC_ICSWX)		+= icswx.o
++ obj-$(CONFIG_PPC_ICSWX_PID)	+= icswx_pid.o
++ obj-$(CONFIG_40x)		+= 40x_mmu.o
++ obj-$(CONFIG_44x)		+= 44x_mmu.o
+++obj-$(CONFIG_PPC_8xx)		+= 8xx_mmu.o
++ obj-$(CONFIG_PPC_FSL_BOOK3E)	+= fsl_booke_mmu.o
++ obj-$(CONFIG_NEED_MULTIPLE_NODES) += numa.o
++ obj-$(CONFIG_PPC_SPLPAR)	+= vphn.o
++diff --git a/arch/powerpc/mm/mmu_decl.h b/arch/powerpc/mm/mmu_decl.h
++index 9f58ff4..7faeb9f 100644
++--- a/arch/powerpc/mm/mmu_decl.h
+++++ b/arch/powerpc/mm/mmu_decl.h
++@@ -132,22 +132,17 @@ extern void wii_memory_fixups(void);
++ /* ...and now those things that may be slightly different between processor
++  * architectures.  -- Dan
++  */
++-#if defined(CONFIG_8xx)
++-#define MMU_init_hw()		do { } while(0)
++-#define mmu_mapin_ram(top)	(0UL)
++-
++-#elif defined(CONFIG_4xx)
+++#ifdef CONFIG_PPC32
++ extern void MMU_init_hw(void);
++ extern unsigned long mmu_mapin_ram(unsigned long top);
+++#endif
++ 
++-#elif defined(CONFIG_PPC_FSL_BOOK3E)
+++#ifdef CONFIG_PPC_FSL_BOOK3E
++ extern unsigned long map_mem_in_cams(unsigned long ram, int max_cam_idx,
++ 				     bool dryrun);
++ extern unsigned long calc_cam_sz(unsigned long ram, unsigned long virt,
++ 				 phys_addr_t phys);
++ #ifdef CONFIG_PPC32
++-extern void MMU_init_hw(void);
++-extern unsigned long mmu_mapin_ram(unsigned long top);
++ extern void adjust_total_lowmem(void);
++ extern int switch_to_as1(void);
++ extern void restore_to_as0(int esel, int offset, void *dt_ptr, int bootcpu);
++@@ -162,8 +157,4 @@ struct tlbcam {
++ 	u32	MAS3;
++ 	u32	MAS7;
++ };
++-#elif defined(CONFIG_PPC32)
++-/* anything 32-bit except 4xx or 8xx */
++-extern void MMU_init_hw(void);
++-extern unsigned long mmu_mapin_ram(unsigned long top);
++ #endif
+diff --git a/./target/linux/mpc85xx/patches-4.4/229-powerpc-Update-documentation-for-noltlbs-kernel-parameter.patch b/./target/linux/mpc85xx/patches-4.4/229-powerpc-Update-documentation-for-noltlbs-kernel-parameter.patch
+new file mode 100644
+index 0000000..c1af3cd
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/229-powerpc-Update-documentation-for-noltlbs-kernel-parameter.patch
+@@ -0,0 +1,13 @@
++diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
++index 59e1515..c3e420b 100644
++--- a/Documentation/kernel-parameters.txt
+++++ b/Documentation/kernel-parameters.txt
++@@ -2592,7 +2592,7 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
++ 	nolapic_timer	[X86-32,APIC] Do not use the local APIC timer.
++ 
++ 	noltlbs		[PPC] Do not use large page/tlb entries for kernel
++-			lowmem mapping on PPC40x.
+++			lowmem mapping on PPC40x and PPC8xx
++ 
++ 	nomca		[IA-64] Disable machine check abort handling
++ 
+diff --git a/./target/linux/mpc85xx/patches-4.4/230-powerpc-8xx-move-setup_initial_memory_limit-into-8xx_mmu.c.patch b/./target/linux/mpc85xx/patches-4.4/230-powerpc-8xx-move-setup_initial_memory_limit-into-8xx_mmu.c.patch
+new file mode 100644
+index 0000000..f87596b
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/230-powerpc-8xx-move-setup_initial_memory_limit-into-8xx_mmu.c.patch
+@@ -0,0 +1,52 @@
++diff --git a/arch/powerpc/mm/8xx_mmu.c b/arch/powerpc/mm/8xx_mmu.c
++index 2d42745..a84f5eb 100644
++--- a/arch/powerpc/mm/8xx_mmu.c
+++++ b/arch/powerpc/mm/8xx_mmu.c
++@@ -81,3 +81,20 @@ unsigned long __init mmu_mapin_ram(unsigned long top)
++ 
++ 	return mapped;
++ }
+++
+++void setup_initial_memory_limit(phys_addr_t first_memblock_base,
+++				phys_addr_t first_memblock_size)
+++{
+++	/* We don't currently support the first MEMBLOCK not mapping 0
+++	 * physical on those processors
+++	 */
+++	BUG_ON(first_memblock_base != 0);
+++
+++#ifdef CONFIG_PIN_TLB
+++	/* 8xx can only access 24MB at the moment */
+++	memblock_set_current_limit(min_t(u64, first_memblock_size, 0x01800000));
+++#else
+++	/* 8xx can only access 8MB at the moment */
+++	memblock_set_current_limit(min_t(u64, first_memblock_size, 0x00800000));
+++#endif
+++}
++diff --git a/arch/powerpc/mm/init_32.c b/arch/powerpc/mm/init_32.c
++index a10be66..1a18e4b 100644
++--- a/arch/powerpc/mm/init_32.c
+++++ b/arch/powerpc/mm/init_32.c
++@@ -193,22 +193,3 @@ void __init MMU_init(void)
++ 	/* Shortly after that, the entire linear mapping will be available */
++ 	memblock_set_current_limit(lowmem_end_addr);
++ }
++-
++-#ifdef CONFIG_8xx /* No 8xx specific .c file to put that in ... */
++-void setup_initial_memory_limit(phys_addr_t first_memblock_base,
++-				phys_addr_t first_memblock_size)
++-{
++-	/* We don't currently support the first MEMBLOCK not mapping 0
++-	 * physical on those processors
++-	 */
++-	BUG_ON(first_memblock_base != 0);
++-
++-#ifdef CONFIG_PIN_TLB
++-	/* 8xx can only access 24MB at the moment */
++-	memblock_set_current_limit(min_t(u64, first_memblock_size, 0x01800000));
++-#else
++-	/* 8xx can only access 8MB at the moment */
++-	memblock_set_current_limit(min_t(u64, first_memblock_size, 0x00800000));
++-#endif
++-}
++-#endif /* CONFIG_8xx */
+diff --git a/./target/linux/mpc85xx/patches-4.4/232-powerpc32-refactor-x_mapped_by_bats-and-x_mapped_by_tlbcam-together.patch b/./target/linux/mpc85xx/patches-4.4/232-powerpc32-refactor-x_mapped_by_bats-and-x_mapped_by_tlbcam-together.patch
+new file mode 100644
+index 0000000..5da58b1
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/232-powerpc32-refactor-x_mapped_by_bats-and-x_mapped_by_tlbcam-together.patch
+@@ -0,0 +1,153 @@
++diff --git a/arch/powerpc/mm/fsl_booke_mmu.c b/arch/powerpc/mm/fsl_booke_mmu.c
++index f3afe3d..a1b2713 100644
++--- a/arch/powerpc/mm/fsl_booke_mmu.c
+++++ b/arch/powerpc/mm/fsl_booke_mmu.c
++@@ -72,10 +72,11 @@ unsigned long tlbcam_sz(int idx)
++ 	return tlbcam_addrs[idx].limit - tlbcam_addrs[idx].start + 1;
++ }
++ 
+++#ifdef CONFIG_FSL_BOOKE
++ /*
++  * Return PA for this VA if it is mapped by a CAM, or 0
++  */
++-phys_addr_t v_mapped_by_tlbcam(unsigned long va)
+++phys_addr_t v_block_mapped(unsigned long va)
++ {
++ 	int b;
++ 	for (b = 0; b < tlbcam_index; ++b)
++@@ -87,7 +88,7 @@ phys_addr_t v_mapped_by_tlbcam(unsigned long va)
++ /*
++  * Return VA for a given PA or 0 if not mapped
++  */
++-unsigned long p_mapped_by_tlbcam(phys_addr_t pa)
+++unsigned long p_block_mapped(phys_addr_t pa)
++ {
++ 	int b;
++ 	for (b = 0; b < tlbcam_index; ++b)
++@@ -97,6 +98,7 @@ unsigned long p_mapped_by_tlbcam(phys_addr_t pa)
++ 			return tlbcam_addrs[b].start+(pa-tlbcam_addrs[b].phys);
++ 	return 0;
++ }
+++#endif
++ 
++ /*
++  * Set up a variable-size TLB entry (tlbcam). The parameters are not checked;
++diff --git a/arch/powerpc/mm/mmu_decl.h b/arch/powerpc/mm/mmu_decl.h
++index 7faeb9f..40dd5d3 100644
++--- a/arch/powerpc/mm/mmu_decl.h
+++++ b/arch/powerpc/mm/mmu_decl.h
++@@ -158,3 +158,13 @@ struct tlbcam {
++ 	u32	MAS7;
++ };
++ #endif
+++
+++#if defined(CONFIG_6xx) || defined(CONFIG_FSL_BOOKE)
+++/* 6xx have BATS */
+++/* FSL_BOOKE have TLBCAM */
+++phys_addr_t v_block_mapped(unsigned long va);
+++unsigned long p_block_mapped(phys_addr_t pa);
+++#else
+++static inline phys_addr_t v_block_mapped(unsigned long va) { return 0; }
+++static inline unsigned long p_block_mapped(phys_addr_t pa) { return 0; }
+++#endif
++diff --git a/arch/powerpc/mm/pgtable_32.c b/arch/powerpc/mm/pgtable_32.c
++index 7692d1b..db0d35e 100644
++--- a/arch/powerpc/mm/pgtable_32.c
+++++ b/arch/powerpc/mm/pgtable_32.c
++@@ -41,32 +41,8 @@ unsigned long ioremap_base;
++ unsigned long ioremap_bot;
++ EXPORT_SYMBOL(ioremap_bot);	/* aka VMALLOC_END */
++ 
++-#ifdef CONFIG_6xx
++-#define HAVE_BATS	1
++-#endif
++-
++-#if defined(CONFIG_FSL_BOOKE)
++-#define HAVE_TLBCAM	1
++-#endif
++-
++ extern char etext[], _stext[];
++ 
++-#ifdef HAVE_BATS
++-extern phys_addr_t v_mapped_by_bats(unsigned long va);
++-extern unsigned long p_mapped_by_bats(phys_addr_t pa);
++-#else /* !HAVE_BATS */
++-#define v_mapped_by_bats(x)	(0UL)
++-#define p_mapped_by_bats(x)	(0UL)
++-#endif /* HAVE_BATS */
++-
++-#ifdef HAVE_TLBCAM
++-extern phys_addr_t v_mapped_by_tlbcam(unsigned long va);
++-extern unsigned long p_mapped_by_tlbcam(phys_addr_t pa);
++-#else /* !HAVE_TLBCAM */
++-#define v_mapped_by_tlbcam(x)	(0UL)
++-#define p_mapped_by_tlbcam(x)	(0UL)
++-#endif /* HAVE_TLBCAM */
++-
++ #define PGDIR_ORDER	(32 + PGD_T_LOG2 - PGDIR_SHIFT)
++ 
++ #ifndef CONFIG_PPC_4K_PAGES
++@@ -228,19 +204,10 @@ __ioremap_caller(phys_addr_t addr, unsigned long size, unsigned long flags,
++ 
++ 	/*
++ 	 * Is it already mapped?  Perhaps overlapped by a previous
++-	 * BAT mapping.  If the whole area is mapped then we're done,
++-	 * otherwise remap it since we want to keep the virt addrs for
++-	 * each request contiguous.
++-	 *
++-	 * We make the assumption here that if the bottom and top
++-	 * of the range we want are mapped then it's mapped to the
++-	 * same virt address (and this is contiguous).
++-	 *  -- Cort
+++	 * mapping.
++ 	 */
++-	if ((v = p_mapped_by_bats(p)) /*&& p_mapped_by_bats(p+size-1)*/ )
++-		goto out;
++-
++-	if ((v = p_mapped_by_tlbcam(p)))
+++	v = p_block_mapped(p);
+++	if (v)
++ 		goto out;
++ 
++ 	if (slab_is_available()) {
++@@ -278,7 +245,8 @@ void iounmap(volatile void __iomem *addr)
++ 	 * If mapped by BATs then there is nothing to do.
++ 	 * Calling vfree() generates a benign warning.
++ 	 */
++-	if (v_mapped_by_bats((unsigned long)addr)) return;
+++	if (v_block_mapped((unsigned long)addr))
+++		return;
++ 
++ 	if (addr > high_memory && (unsigned long) addr < ioremap_bot)
++ 		vunmap((void *) (PAGE_MASK & (unsigned long)addr));
++@@ -403,7 +371,7 @@ static int __change_page_attr(struct page *page, pgprot_t prot)
++ 	BUG_ON(PageHighMem(page));
++ 	address = (unsigned long)page_address(page);
++ 
++-	if (v_mapped_by_bats(address) || v_mapped_by_tlbcam(address))
+++	if (v_block_mapped(address))
++ 		return 0;
++ 	if (!get_pteptr(&init_mm, address, &kpte, &kpmd))
++ 		return -EINVAL;
++diff --git a/arch/powerpc/mm/ppc_mmu_32.c b/arch/powerpc/mm/ppc_mmu_32.c
++index 6b2f3e4..2a049fb 100644
++--- a/arch/powerpc/mm/ppc_mmu_32.c
+++++ b/arch/powerpc/mm/ppc_mmu_32.c
++@@ -49,7 +49,7 @@ struct batrange {		/* stores address ranges mapped by BATs */
++ /*
++  * Return PA for this VA if it is mapped by a BAT, or 0
++  */
++-phys_addr_t v_mapped_by_bats(unsigned long va)
+++phys_addr_t v_block_mapped(unsigned long va)
++ {
++ 	int b;
++ 	for (b = 0; b < 4; ++b)
++@@ -61,7 +61,7 @@ phys_addr_t v_mapped_by_bats(unsigned long va)
++ /*
++  * Return VA for a given PA or 0 if not mapped
++  */
++-unsigned long p_mapped_by_bats(phys_addr_t pa)
+++unsigned long p_block_mapped(phys_addr_t pa)
++ {
++ 	int b;
++ 	for (b = 0; b < 4; ++b)
+diff --git a/./target/linux/mpc85xx/patches-4.4/233-powerpc-8xx-Fix-vaddr-for-IMMR-early-remap.patch b/./target/linux/mpc85xx/patches-4.4/233-powerpc-8xx-Fix-vaddr-for-IMMR-early-remap.patch
+new file mode 100644
+index 0000000..7be0bdb
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/233-powerpc-8xx-Fix-vaddr-for-IMMR-early-remap.patch
+@@ -0,0 +1,151 @@
++diff --git a/arch/powerpc/include/asm/fixmap.h b/arch/powerpc/include/asm/fixmap.h
++index 90f604b..d7dd8fb 100644
++--- a/arch/powerpc/include/asm/fixmap.h
+++++ b/arch/powerpc/include/asm/fixmap.h
++@@ -51,6 +51,13 @@ enum fixed_addresses {
++ 	FIX_KMAP_BEGIN,	/* reserved pte's for temporary kernel mappings */
++ 	FIX_KMAP_END = FIX_KMAP_BEGIN+(KM_TYPE_NR*NR_CPUS)-1,
++ #endif
+++#ifdef CONFIG_PPC_8xx
+++	/* For IMMR we need an aligned 512K area */
+++	FIX_IMMR_START,
+++	FIX_IMMR_TOP = (FIX_IMMR_START - 1 + ((512 * 1024) / PAGE_SIZE)) &
+++		       ~(((512 * 1024) / PAGE_SIZE) - 1),
+++	FIX_IMMR_BASE = FIX_IMMR_TOP - 1 + ((512 * 1024) / PAGE_SIZE),
+++#endif
++ 	/* FIX_PCIE_MCFG, */
++ 	__end_of_fixed_addresses
++ };
++diff --git a/arch/powerpc/kernel/asm-offsets.c b/arch/powerpc/kernel/asm-offsets.c
++index 07cebc3..9724ff8 100644
++--- a/arch/powerpc/kernel/asm-offsets.c
+++++ b/arch/powerpc/kernel/asm-offsets.c
++@@ -68,6 +68,10 @@
++ #include "../mm/mmu_decl.h"
++ #endif
++ 
+++#ifdef CONFIG_PPC_8xx
+++#include <asm/fixmap.h>
+++#endif
+++
++ int main(void)
++ {
++ 	DEFINE(THREAD, offsetof(struct task_struct, thread));
++@@ -772,5 +776,9 @@ int main(void)
++ 
++ 	DEFINE(PPC_DBELL_SERVER, PPC_DBELL_SERVER);
++ 
+++#ifdef CONFIG_PPC_8xx
+++	DEFINE(VIRT_IMMR_BASE, __fix_to_virt(FIX_IMMR_BASE));
+++#endif
+++
++ 	return 0;
++ }
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index 87d1f5f..09173ae 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -30,6 +30,7 @@
++ #include <asm/ppc_asm.h>
++ #include <asm/asm-offsets.h>
++ #include <asm/ptrace.h>
+++#include <asm/fixmap.h>
++ 
++ /* Macro to make the code more readable. */
++ #ifdef CONFIG_8xx_CPU6
++@@ -763,7 +764,7 @@ start_here:
++  * virtual to physical.  Also, set the cache mode since that is defined
++  * by TLB entries and perform any additional mapping (like of the IMMR).
++  * If configured to pin some TLBs, we pin the first 8 Mbytes of kernel,
++- * 24 Mbytes of data, and the 8M IMMR space.  Anything not covered by
+++ * 24 Mbytes of data, and the 512k IMMR space.  Anything not covered by
++  * these mappings is mapped by page tables.
++  */
++ initial_mmu:
++@@ -812,7 +813,7 @@ initial_mmu:
++ 	ori	r8, r8, MD_APG_INIT@l
++ 	mtspr	SPRN_MD_AP, r8
++ 
++-	/* Map another 8 MByte at the IMMR to get the processor
+++	/* Map a 512k page for the IMMR to get the processor
++ 	 * internal registers (among other things).
++ 	 */
++ #ifdef CONFIG_PIN_TLB
++@@ -820,12 +821,12 @@ initial_mmu:
++ 	mtspr	SPRN_MD_CTR, r10
++ #endif
++ 	mfspr	r9, 638			/* Get current IMMR */
++-	andis.	r9, r9, 0xff80		/* Get 8Mbyte boundary */
+++	andis.	r9, r9, 0xfff8		/* Get 512 kbytes boundary */
++ 
++-	mr	r8, r9			/* Create vaddr for TLB */
+++	lis	r8, VIRT_IMMR_BASE@h	/* Create vaddr for TLB */
++ 	ori	r8, r8, MD_EVALID	/* Mark it valid */
++ 	mtspr	SPRN_MD_EPN, r8
++-	li	r8, MD_PS8MEG		/* Set 8M byte page */
+++	li	r8, MD_PS512K | MD_GUARDED	/* Set 512k byte page */
++ 	ori	r8, r8, MD_SVALID	/* Make it valid */
++ 	mtspr	SPRN_MD_TWC, r8
++ 	mr	r8, r9			/* Create paddr for TLB */
++diff --git a/arch/powerpc/mm/mmu_decl.h b/arch/powerpc/mm/mmu_decl.h
++index 40dd5d3..e7228b7 100644
++--- a/arch/powerpc/mm/mmu_decl.h
+++++ b/arch/powerpc/mm/mmu_decl.h
++@@ -107,6 +107,13 @@ struct hash_pte;
++ extern struct hash_pte *Hash, *Hash_end;
++ extern unsigned long Hash_size, Hash_mask;
++ 
+++#define PHYS_IMMR_BASE (mfspr(SPRN_IMMR) & 0xfff80000)
+++#ifdef CONFIG_PPC_8xx
+++#define VIRT_IMMR_BASE (__fix_to_virt(FIX_IMMR_BASE))
+++#else
+++#define VIRT_IMMR_BASE PHYS_IMMR_BASE
+++#endif
+++
++ #endif /* CONFIG_PPC32 */
++ 
++ #ifdef CONFIG_PPC64
++diff --git a/arch/powerpc/sysdev/cpm_common.c b/arch/powerpc/sysdev/cpm_common.c
++index 9d32465..94476f4 100644
++--- a/arch/powerpc/sysdev/cpm_common.c
+++++ b/arch/powerpc/sysdev/cpm_common.c
++@@ -29,7 +29,7 @@
++ #include <asm/io.h>
++ #include <asm/rheap.h>
++ #include <asm/cpm.h>
++-
+++#include <asm/fixmap.h>
++ #include <mm/mmu_decl.h>
++ 
++ #if defined(CONFIG_CPM2) || defined(CONFIG_8xx_GPIO)
++@@ -37,12 +38,16 @@
++ #endif
++ 
++ #ifdef CONFIG_PPC_EARLY_DEBUG_CPM
++-static u32 __iomem *cpm_udbg_txdesc =
++-	(u32 __iomem __force *)CONFIG_PPC_EARLY_DEBUG_CPM_ADDR;
+++static u32 __iomem *cpm_udbg_txdesc;
++ 
++ static void udbg_putc_cpm(char c)
++ {
++-	u8 __iomem *txbuf = (u8 __iomem __force *)in_be32(&cpm_udbg_txdesc[1]);
+++	static u8 __iomem *txbuf;
+++
+++	if (unlikely(txbuf == NULL))
+++		txbuf = (u8 __iomem __force *)
+++			 (in_be32(&cpm_udbg_txdesc[1]) - PHYS_IMMR_BASE +
+++			  VIRT_IMMR_BASE);
++ 
++ 	if (c == '\n')
++ 		udbg_putc_cpm('\r');
++@@ -56,6 +61,10 @@ static void udbg_putc_cpm(char c)
++ 
++ void __init udbg_init_cpm(void)
++ {
+++	cpm_udbg_txdesc = (u32 __iomem __force *)
+++			  (CONFIG_PPC_EARLY_DEBUG_CPM_ADDR - PHYS_IMMR_BASE +
+++			   VIRT_IMMR_BASE);
+++
++ 	if (cpm_udbg_txdesc) {
++ #ifdef CONFIG_CPM2
++ 		setbat(1, 0xf0000000, 0xf0000000, 1024*1024, PAGE_KERNEL_NCG);
+diff --git a/./target/linux/mpc85xx/patches-4.4/234-powerpc-8xx-Map-IMMR-area-with-512k-page-at-a-fixed-address.patch b/./target/linux/mpc85xx/patches-4.4/234-powerpc-8xx-Map-IMMR-area-with-512k-page-at-a-fixed-address.patch
+new file mode 100644
+index 0000000..e553bd0
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/234-powerpc-8xx-Map-IMMR-area-with-512k-page-at-a-fixed-address.patch
+@@ -0,0 +1,177 @@
++diff --git a/arch/powerpc/include/asm/fixmap.h b/arch/powerpc/include/asm/fixmap.h
++index d7dd8fb..b954dc3 100644
++--- a/arch/powerpc/include/asm/fixmap.h
+++++ b/arch/powerpc/include/asm/fixmap.h
++@@ -52,12 +52,19 @@ enum fixed_addresses {
++ 	FIX_KMAP_END = FIX_KMAP_BEGIN+(KM_TYPE_NR*NR_CPUS)-1,
++ #endif
++ #ifdef CONFIG_PPC_8xx
++-	/* For IMMR we need an aligned 512K area */
++ 	FIX_IMMR_START,
+++#ifdef CONFIG_PPC_4K_PAGES
+++	/* For IMMR we need an aligned 4M area (full PGD entry) */
+++	FIX_IMMR_TOP = (FIX_IMMR_START - 1 + ((4 * 1024 * 1024) / PAGE_SIZE)) &
+++		       ~(((4 * 1024 * 1024) / PAGE_SIZE) - 1),
+++	FIX_IMMR_BASE = FIX_IMMR_TOP - 1 + ((4 * 1024 * 1024) / PAGE_SIZE),
+++#else
+++	/* For IMMR we need an aligned 512K area */
++ 	FIX_IMMR_TOP = (FIX_IMMR_START - 1 + ((512 * 1024) / PAGE_SIZE)) &
++ 		       ~(((512 * 1024) / PAGE_SIZE) - 1),
++ 	FIX_IMMR_BASE = FIX_IMMR_TOP - 1 + ((512 * 1024) / PAGE_SIZE),
++ #endif
+++#endif
++ 	/* FIX_PCIE_MCFG, */
++ 	__end_of_fixed_addresses
++ };
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index 09173ae..ae721a1 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -254,6 +254,37 @@ DataAccess:
++ 	. = 0x400
++ InstructionAccess:
++ 
+++/*
+++ * Bottom part of DTLBMiss handler for 512k pages
+++ * not enough space in the primary location
+++ */
+++#ifdef CONFIG_PPC_4K_PAGES
+++/*
+++ * 512k pages are only used for mapping IMMR area in 4K pages mode.
+++ * Only map the first 512k page of the 4M area covered by the PGD entry.
+++ * This should not happen, but if we are called for another page of that
+++ * area, don't mark it valid
+++ *
+++ * In 16k pages mode, IMMR is directly mapped with 16k pages
+++ */
+++DTLBMiss512k:
+++	rlwinm.	r10, r10, 0, 0x00380000
+++	bne-	1f
+++	ori	r11, r11, MD_SVALID
+++1:	mtcr	r3
+++	MTSPR_CPU6(SPRN_MD_TWC, r11, r3)
+++	rlwinm	r10, r11, 0, 0xffc00000
+++	ori	r10, r10, 0xf0 | MD_SPS16K | _PAGE_SHARED | _PAGE_DIRTY	| \
+++			  _PAGE_PRESENT | _PAGE_NO_CACHE
+++	MTSPR_CPU6(SPRN_MD_RPN, r10, r3)	/* Update TLB entry */
+++
+++	li	r11, RPN_PATTERN
+++	mfspr	r3, SPRN_SPRG_SCRATCH2
+++	mtspr	SPRN_DAR, r11	/* Tag DAR */
+++	EXCEPTION_EPILOG_0
+++	rfi
+++#endif
+++
++ /* External interrupt */
++ 	EXCEPTION(0x500, HardwareInterrupt, do_IRQ, EXC_XFER_LITE)
++ 
++@@ -405,6 +436,9 @@ DataStoreTLBMiss:
++ 	lwz	r11, (swapper_pg_dir-PAGE_OFFSET)@l(r11)	/* Get the level 1 entry */
++ 	mtcr	r11
++ 	bt-	28,DTLBMiss8M		/* bit 28 = Large page (8M) */
+++#ifdef CONFIG_PPC_4K_PAGES
+++	bt-	29,DTLBMiss512k		/* bit 29 = Large page (8M or 512K) */
+++#endif
++ 	mtcr	r3
++ 
++ 	/* We have a pte table, so load fetch the pte from the table.
++@@ -559,7 +593,7 @@ FixupDAR:/* Entry point for dcbx workaround. */
++ 3:	rlwimi	r11, r10, 32 - ((PAGE_SHIFT - 2) << 1), (PAGE_SHIFT - 2) << 1, 29
++ 	lwz	r11, (swapper_pg_dir-PAGE_OFFSET)@l(r11)	/* Get the level 1 entry */
++ 	mtcr	r11
++-	bt	28,200f		/* bit 28 = Large page (8M) */
+++	bt	29,200f		/* bit 29 = Large page (8M or 512K) */
++ 	rlwinm	r11, r11,0,0,19	/* Extract page descriptor page address */
++ 	/* Insert level 2 index */
++ 	rlwimi	r11, r10, 32 - (PAGE_SHIFT - 2), 32 - PAGE_SHIFT, 29
++diff --git a/arch/powerpc/mm/8xx_mmu.c b/arch/powerpc/mm/8xx_mmu.c
++index a84f5eb..f37d5ec 100644
++--- a/arch/powerpc/mm/8xx_mmu.c
+++++ b/arch/powerpc/mm/8xx_mmu.c
++@@ -13,10 +13,61 @@
++  */
++ 
++ #include <linux/memblock.h>
+++#include <asm/fixmap.h>
++ 
++ #include "mmu_decl.h"
++ 
+++#define IMMR_SIZE (__fix_to_virt(FIX_IMMR_TOP) + PAGE_SIZE - VIRT_IMMR_BASE)
+++
++ extern int __map_without_ltlbs;
+++
+++/*
+++ * Return PA for this VA if it is in IMMR area, or 0
+++ */
+++phys_addr_t v_block_mapped(unsigned long va)
+++{
+++	unsigned long p = PHYS_IMMR_BASE;
+++
+++	if (__map_without_ltlbs)
+++		return 0;
+++	if (va >= VIRT_IMMR_BASE && va < VIRT_IMMR_BASE + IMMR_SIZE)
+++		return p + va - VIRT_IMMR_BASE;
+++	return 0;
+++}
+++
+++/*
+++ * Return VA for a given PA or 0 if not mapped
+++ */
+++unsigned long p_block_mapped(phys_addr_t pa)
+++{
+++	unsigned long p = PHYS_IMMR_BASE;
+++
+++	if (__map_without_ltlbs)
+++		return 0;
+++	if (pa >= p && pa < p + IMMR_SIZE)
+++		return VIRT_IMMR_BASE + pa - p;
+++	return 0;
+++}
+++
+++static void mmu_mapin_immr(void)
+++{
+++	unsigned long p = PHYS_IMMR_BASE;
+++	unsigned long v = VIRT_IMMR_BASE;
+++#ifdef CONFIG_PPC_4K_PAGES
+++	pmd_t *pmdp;
+++	unsigned long val = p | MD_PS512K | MD_GUARDED;
+++
+++	pmdp = pmd_offset(pud_offset(pgd_offset_k(v), v), v);
+++	*pmdp = __pmd(val);
+++#else /* CONFIG_PPC_16K_PAGES */
+++	unsigned long f = pgprot_val(PAGE_KERNEL_NCG);
+++	int offset;
+++
+++	for (offset = 0; offset < IMMR_SIZE; offset += PAGE_SIZE)
+++		map_page(v + offset, p + offset, f);
+++#endif
+++}
+++
++ /*
++  * MMU_init_hw does the chip-specific initialization of the MMU hardware.
++  */
++@@ -79,6 +130,8 @@ unsigned long __init mmu_mapin_ram(unsigned long top)
++ 	 */
++ 	memblock_set_current_limit(mapped);
++ 
+++	mmu_mapin_immr();
+++
++ 	return mapped;
++ }
++ 
++diff --git a/arch/powerpc/mm/mmu_decl.h b/arch/powerpc/mm/mmu_decl.h
++index e7228b7..3872332 100644
++--- a/arch/powerpc/mm/mmu_decl.h
+++++ b/arch/powerpc/mm/mmu_decl.h
++@@ -166,9 +166,10 @@ struct tlbcam {
++ };
++ #endif
++ 
++-#if defined(CONFIG_6xx) || defined(CONFIG_FSL_BOOKE)
+++#if defined(CONFIG_6xx) || defined(CONFIG_FSL_BOOKE) || defined(CONFIG_PPC_8xx)
++ /* 6xx have BATS */
++ /* FSL_BOOKE have TLBCAM */
+++/* 8xx have LTLB */
++ phys_addr_t v_block_mapped(unsigned long va);
++ unsigned long p_block_mapped(phys_addr_t pa);
++ #else
+diff --git a/./target/linux/mpc85xx/patches-4.4/235-powerpc-8xx-CONFIG_PIN_TLB-unneeded-for-CONFIG_PPC_EARLY_DEBUG_CPM.patch b/./target/linux/mpc85xx/patches-4.4/235-powerpc-8xx-CONFIG_PIN_TLB-unneeded-for-CONFIG_PPC_EARLY_DEBUG_CPM.patch
+new file mode 100644
+index 0000000..ed13bc2
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/235-powerpc-8xx-CONFIG_PIN_TLB-unneeded-for-CONFIG_PPC_EARLY_DEBUG_CPM.patch
+@@ -0,0 +1,12 @@
++diff --git a/arch/powerpc/Kconfig.debug b/arch/powerpc/Kconfig.debug
++index 638f9ce..136b09c 100644
++--- a/arch/powerpc/Kconfig.debug
+++++ b/arch/powerpc/Kconfig.debug
++@@ -220,7 +220,6 @@ config PPC_EARLY_DEBUG_40x
++ config PPC_EARLY_DEBUG_CPM
++ 	bool "Early serial debugging for Freescale CPM-based serial ports"
++ 	depends on SERIAL_CPM
++-	select PIN_TLB if PPC_8xx
++ 	help
++ 	  Select this to enable early debugging for Freescale chips
++ 	  using a CPM-based serial port.  This assumes that the bootwrapper
+diff --git a/./target/linux/mpc85xx/patches-4.4/236-powerpc-8xx-map-more-RAM-at-startup-when-needed.patch b/./target/linux/mpc85xx/patches-4.4/236-powerpc-8xx-map-more-RAM-at-startup-when-needed.patch
+new file mode 100644
+index 0000000..56ec64f
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/236-powerpc-8xx-map-more-RAM-at-startup-when-needed.patch
+@@ -0,0 +1,136 @@
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index ae721a1..a268cf4 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -72,6 +72,9 @@
++ #define RPN_PATTERN	0x00f0
++ #endif
++ 
+++/* ePAPR magic value for non BOOK III-E CPUs */
+++#define EPAPR_SMAGIC	0x65504150
+++
++ 	__HEAD
++ _ENTRY(_stext);
++ _ENTRY(_start);
++@@ -101,6 +104,38 @@ _ENTRY(_start);
++  */
++ 	.globl	__start
++ __start:
+++/*
+++ * Determine initial RAM size
+++ *
+++ * If the Bootloader is ePAPR compliant, the size is given in r7
+++ * otherwise, we have to determine how much is needed. For that, we have to
+++ * check whether _end of kernel and device tree are within the first 8Mb.
+++ */
+++	lis	r30, 0x00800000@h	/* 8Mb by default */
+++
+++	lis	r8, EPAPR_SMAGIC@h
+++	ori	r8, r8, EPAPR_SMAGIC@l
+++	cmplw	cr0, r8, r6
+++	bne	1f
+++	lis	r30, 0x01800000@h	/* 24Mb max */
+++	cmplw	cr0, r7, r30
+++	bgt	2f
+++	mr	r30, r7			/* save initial ram size */
+++	b	2f
+++1:
+++	/* is kernel _end or DTB in the first 8M ? if not map 16M */
+++	lis	r8, (_end - PAGE_OFFSET)@h
+++	ori	r8, r8, (_end - PAGE_OFFSET)@l
+++	addi	r8, r8, -1
+++	or	r8, r8, r3
+++	cmplw	cr0, r8, r30
+++	blt	2f
+++	lis	r30, 0x01000000@h	/* 16Mb */
+++	/* is kernel _end or DTB in the first 16M ? if not map 24M */
+++	cmplw	cr0, r8, r30
+++	blt	2f
+++	lis	r30, 0x01800000@h	/* 24Mb */
+++2:
++ 	mr	r31,r3			/* save device tree ptr */
++ 
++ 	/* We have to turn on the MMU right away so we get cache modes
++@@ -737,6 +772,8 @@ start_here:
++ /*
++  * Decide what sort of machine this is and initialize the MMU.
++  */
+++	lis	r3, initial_memory_size@ha
+++	stw	r30, initial_memory_size@l(r3)
++ 	li	r3,0
++ 	mr	r4,r31
++ 	bl	machine_init
++@@ -868,10 +905,15 @@ initial_mmu:
++ 	mtspr	SPRN_MD_RPN, r8
++ 
++ #ifdef CONFIG_PIN_TLB
++-	/* Map two more 8M kernel data pages.
++-	*/
+++	/* Map one more 8M kernel data page. */
++ 	addi	r10, r10, 0x0100
++ 	mtspr	SPRN_MD_CTR, r10
+++#else
+++	/* Map one more 8M kernel data page if needed */
+++	lis	r10, 0x00800000@h
+++	cmplw	cr0, r30, r10
+++	ble	1f
+++#endif
++ 
++ 	lis	r8, KERNELBASE@h	/* Create vaddr for TLB */
++ 	addis	r8, r8, 0x0080		/* Add 8M */
++@@ -884,20 +926,28 @@ initial_mmu:
++ 	addis	r11, r11, 0x0080	/* Add 8M */
++ 	mtspr	SPRN_MD_RPN, r11
++ 
+++#ifdef CONFIG_PIN_TLB
+++	/* Map one more 8M kernel data page. */
++ 	addi	r10, r10, 0x0100
++ 	mtspr	SPRN_MD_CTR, r10
+++#else
+++	/* Map one more 8M kernel data page if needed */
+++	lis	r10, 0x01000000@h
+++	cmplw	cr0, r30, r10
+++	ble	1f
+++#endif
++ 
++ 	addis	r8, r8, 0x0080		/* Add 8M */
++ 	mtspr	SPRN_MD_EPN, r8
++ 	mtspr	SPRN_MD_TWC, r9
++ 	addis	r11, r11, 0x0080	/* Add 8M */
++ 	mtspr	SPRN_MD_RPN, r11
++-#endif
++ 
++ 	/* Since the cache is enabled according to the information we
++ 	 * just loaded into the TLB, invalidate and enable the caches here.
++ 	 * We should probably check/set other modes....later.
++ 	 */
+++1:
++ 	lis	r8, IDC_INVALL@h
++ 	mtspr	SPRN_IC_CST, r8
++ 	mtspr	SPRN_DC_CST, r8
++diff --git a/arch/powerpc/mm/8xx_mmu.c b/arch/powerpc/mm/8xx_mmu.c
++index f37d5ec..50f17d2 100644
++--- a/arch/powerpc/mm/8xx_mmu.c
+++++ b/arch/powerpc/mm/8xx_mmu.c
++@@ -20,6 +20,7 @@
++ #define IMMR_SIZE (__fix_to_virt(FIX_IMMR_TOP) + PAGE_SIZE - VIRT_IMMR_BASE)
++ 
++ extern int __map_without_ltlbs;
+++int initial_memory_size; /* size of initial memory mapped by head_8xx.S */
++ 
++ /*
++  * Return PA for this VA if it is in IMMR area, or 0
++@@ -143,11 +144,6 @@ void setup_initial_memory_limit(phys_addr_t first_memblock_base,
++ 	 */
++ 	BUG_ON(first_memblock_base != 0);
++ 
++-#ifdef CONFIG_PIN_TLB
++-	/* 8xx can only access 24MB at the moment */
++-	memblock_set_current_limit(min_t(u64, first_memblock_size, 0x01800000));
++-#else
++-	/* 8xx can only access 8MB at the moment */
++-	memblock_set_current_limit(min_t(u64, first_memblock_size, 0x00800000));
++-#endif
+++	memblock_set_current_limit(min_t(u64, first_memblock_size,
+++					 initial_memory_size));
++ }
+diff --git a/./target/linux/mpc85xx/patches-4.4/237-powerpc32-Remove-useless-wrong-MMU-setio-progress-message.patch b/./target/linux/mpc85xx/patches-4.4/237-powerpc32-Remove-useless-wrong-MMU-setio-progress-message.patch
+new file mode 100644
+index 0000000..1dcf64e
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/237-powerpc32-Remove-useless-wrong-MMU-setio-progress-message.patch
+@@ -0,0 +1,15 @@
++diff --git a/arch/powerpc/mm/init_32.c b/arch/powerpc/mm/init_32.c
++index 1a18e4b..4eb1b8f 100644
++--- a/arch/powerpc/mm/init_32.c
+++++ b/arch/powerpc/mm/init_32.c
++@@ -178,10 +178,6 @@ void __init MMU_init(void)
++ 	/* Initialize early top-down ioremap allocator */
++ 	ioremap_bot = IOREMAP_TOP;
++ 
++-	/* Map in I/O resources */
++-	if (ppc_md.progress)
++-		ppc_md.progress("MMU:setio", 0x302);
++-
++ 	if (ppc_md.progress)
++ 		ppc_md.progress("MMU:exit", 0x211);
++ 
+diff --git a/./target/linux/mpc85xx/patches-4.4/238-powerpc32-remove-ioremap_base.patch b/./target/linux/mpc85xx/patches-4.4/238-powerpc32-remove-ioremap_base.patch
+new file mode 100644
+index 0000000..5c5c348
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/238-powerpc32-remove-ioremap_base.patch
+@@ -0,0 +1,66 @@
++diff --git a/arch/powerpc/mm/mmu_decl.h b/arch/powerpc/mm/mmu_decl.h
++index 3872332..53564a3 100644
++--- a/arch/powerpc/mm/mmu_decl.h
+++++ b/arch/powerpc/mm/mmu_decl.h
++@@ -100,7 +100,6 @@ extern void setbat(int index, unsigned long virt, phys_addr_t phys,
++ 
++ extern int __map_without_bats;
++ extern int __allow_ioremap_reserved;
++-extern unsigned long ioremap_base;
++ extern unsigned int rtas_data, rtas_size;
++ 
++ struct hash_pte;
++diff --git a/arch/powerpc/mm/pgtable_32.c b/arch/powerpc/mm/pgtable_32.c
++index db0d35e..815ccd7 100644
++--- a/arch/powerpc/mm/pgtable_32.c
+++++ b/arch/powerpc/mm/pgtable_32.c
++@@ -37,7 +37,6 @@
++ 
++ #include "mmu_decl.h"
++ 
++-unsigned long ioremap_base;
++ unsigned long ioremap_bot;
++ EXPORT_SYMBOL(ioremap_bot);	/* aka VMALLOC_END */
++ 
++@@ -173,7 +172,7 @@ __ioremap_caller(phys_addr_t addr, unsigned long size, unsigned long flags,
++ 	/*
++ 	 * Choose an address to map it to.
++ 	 * Once the vmalloc system is running, we use it.
++-	 * Before then, we use space going down from ioremap_base
+++	 * Before then, we use space going down from IOREMAP_TOP
++ 	 * (ioremap_bot records where we're up to).
++ 	 */
++ 	p = addr & PAGE_MASK;
++diff --git a/arch/powerpc/platforms/embedded6xx/mpc10x.h b/arch/powerpc/platforms/embedded6xx/mpc10x.h
++index b290b63..5ad1202 100644
++--- a/arch/powerpc/platforms/embedded6xx/mpc10x.h
+++++ b/arch/powerpc/platforms/embedded6xx/mpc10x.h
++@@ -24,13 +24,11 @@
++  *   Processor: 0x80000000 - 0x807fffff -> PCI I/O: 0x00000000 - 0x007fffff
++  *   Processor: 0xc0000000 - 0xdfffffff -> PCI MEM: 0x00000000 - 0x1fffffff
++  *   PCI MEM:   0x80000000 -> Processor System Memory: 0x00000000
++- *   EUMB mapped to: ioremap_base - 0x00100000 (ioremap_base - 1 MB)
++  *
++  * MAP B (CHRP Map)
++  *   Processor: 0xfe000000 - 0xfebfffff -> PCI I/O: 0x00000000 - 0x00bfffff
++  *   Processor: 0x80000000 - 0xbfffffff -> PCI MEM: 0x80000000 - 0xbfffffff
++  *   PCI MEM:   0x00000000 -> Processor System Memory: 0x00000000
++- *   EUMB mapped to: ioremap_base - 0x00100000 (ioremap_base - 1 MB)
++  */
++ 
++ /*
++@@ -138,14 +136,6 @@
++ #define MPC10X_EUMB_WP_OFFSET		0x000ff000 /* Data path diagnostic, watchpoint reg offset */
++ #define MPC10X_EUMB_WP_SIZE		0x00001000 /* Data path diagnostic, watchpoint reg size */
++ 
++-/*
++- * Define some recommended places to put the EUMB regs.
++- * For both maps, recommend putting the EUMB from 0xeff00000 to 0xefffffff.
++- */
++-extern unsigned long			ioremap_base;
++-#define	MPC10X_MAPA_EUMB_BASE		(ioremap_base - MPC10X_EUMB_SIZE)
++-#define	MPC10X_MAPB_EUMB_BASE		MPC10X_MAPA_EUMB_BASE
++-
++ enum ppc_sys_devices {
++ 	MPC10X_IIC1,
++ 	MPC10X_DMA0,
+diff --git a/./target/linux/mpc85xx/patches-4.4/239-powerpc-8xx-Add-missing-SPRN-defines-into-reg_8xx.h.patch b/./target/linux/mpc85xx/patches-4.4/239-powerpc-8xx-Add-missing-SPRN-defines-into-reg_8xx.h.patch
+new file mode 100644
+index 0000000..8a6a9c5
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/239-powerpc-8xx-Add-missing-SPRN-defines-into-reg_8xx.h.patch
+@@ -0,0 +1,45 @@
++diff --git a/arch/powerpc/include/asm/mmu-8xx.h b/arch/powerpc/include/asm/mmu-8xx.h
++index f05500a..0a566f1 100644
++--- a/arch/powerpc/include/asm/mmu-8xx.h
+++++ b/arch/powerpc/include/asm/mmu-8xx.h
++@@ -171,9 +171,9 @@ typedef struct {
++ } mm_context_t;
++ #endif /* !__ASSEMBLY__ */
++ 
++-#if (PAGE_SHIFT == 12)
+++#if defined(CONFIG_PPC_4K_PAGES)
++ #define mmu_virtual_psize	MMU_PAGE_4K
++-#elif (PAGE_SHIFT == 14)
+++#elif defined(CONFIG_PPC_16K_PAGES)
++ #define mmu_virtual_psize	MMU_PAGE_16K
++ #else
++ #error "Unsupported PAGE_SIZE"
++diff --git a/arch/powerpc/include/asm/reg_8xx.h b/arch/powerpc/include/asm/reg_8xx.h
++index e8ea346..0f71c81 100644
++--- a/arch/powerpc/include/asm/reg_8xx.h
+++++ b/arch/powerpc/include/asm/reg_8xx.h
++@@ -4,6 +4,8 @@
++ #ifndef _ASM_POWERPC_REG_8xx_H
++ #define _ASM_POWERPC_REG_8xx_H
++ 
+++#include <asm/mmu-8xx.h>
+++
++ /* Cache control on the MPC8xx is provided through some additional
++  * special purpose registers.
++  */
++@@ -14,6 +16,15 @@
++ #define SPRN_DC_ADR	569	/* Address needed for some commands */
++ #define SPRN_DC_DAT	570	/* Read-only data register */
++ 
+++/* Misc Debug */
+++#define SPRN_DPDR	630
+++#define SPRN_MI_CAM	816
+++#define SPRN_MI_RAM0	817
+++#define SPRN_MI_RAM1	818
+++#define SPRN_MD_CAM	824
+++#define SPRN_MD_RAM0	825
+++#define SPRN_MD_RAM1	826
+++
++ /* Commands.  Only the first few are available to the instruction cache.
++ */
++ #define	IDC_ENABLE	0x02000000	/* Cache enable */
+diff --git a/./target/linux/mpc85xx/patches-4.4/240-powerpc-8xx-Handle-CPU6-ERRATA-directly-in-mtspr-macro.patch b/./target/linux/mpc85xx/patches-4.4/240-powerpc-8xx-Handle-CPU6-ERRATA-directly-in-mtspr-macro.patch
+new file mode 100644
+index 0000000..1cd62c2
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/240-powerpc-8xx-Handle-CPU6-ERRATA-directly-in-mtspr-macro.patch
+@@ -0,0 +1,107 @@
++diff --git a/arch/powerpc/include/asm/reg.h b/arch/powerpc/include/asm/reg.h
++index c4cb2ff..7b5d97f 100644
++--- a/arch/powerpc/include/asm/reg.h
+++++ b/arch/powerpc/include/asm/reg.h
++@@ -1211,9 +1211,11 @@ static inline void mtmsr_isync(unsigned long val)
++ #define mfspr(rn)	({unsigned long rval; \
++ 			asm volatile("mfspr %0," __stringify(rn) \
++ 				: "=r" (rval)); rval;})
+++#ifndef mtspr
++ #define mtspr(rn, v)	asm volatile("mtspr " __stringify(rn) ",%0" : \
++ 				     : "r" ((unsigned long)(v)) \
++ 				     : "memory")
+++#endif
++ 
++ extern void msr_check_and_set(unsigned long bits);
++ extern bool strict_msr_control;
++diff --git a/arch/powerpc/include/asm/reg_8xx.h b/arch/powerpc/include/asm/reg_8xx.h
++index 0f71c81..d41412c 100644
++--- a/arch/powerpc/include/asm/reg_8xx.h
+++++ b/arch/powerpc/include/asm/reg_8xx.h
++@@ -50,4 +50,86 @@
++ #define DC_DFWT		0x40000000	/* Data cache is forced write through */
++ #define DC_LES		0x20000000	/* Caches are little endian mode */
++ 
+++#ifdef CONFIG_8xx_CPU6
+++#define do_mtspr_cpu6(rn, rn_addr, v)	\
+++	do {								\
+++		int _reg_cpu6 = rn_addr, _tmp_cpu6[1];		\
+++		asm volatile("stw %0, %1;"				\
+++			     "lwz %0, %1;"				\
+++			     "mtspr " __stringify(rn) ",%2" :		\
+++			     : "r" (_reg_cpu6), "m"(_tmp_cpu6),		\
+++			       "r" ((unsigned long)(v))			\
+++			     : "memory");				\
+++	} while (0)
+++
+++#define do_mtspr(rn, v)	asm volatile("mtspr " __stringify(rn) ",%0" :	\
+++				     : "r" ((unsigned long)(v))		\
+++				     : "memory")
+++#define mtspr(rn, v) \
+++	do {								\
+++		if (rn == SPRN_IMMR)					\
+++			do_mtspr_cpu6(rn, 0x3d30, v);			\
+++		else if (rn == SPRN_IC_CST)				\
+++			do_mtspr_cpu6(rn, 0x2110, v);			\
+++		else if (rn == SPRN_IC_ADR)				\
+++			do_mtspr_cpu6(rn, 0x2310, v);			\
+++		else if (rn == SPRN_IC_DAT)				\
+++			do_mtspr_cpu6(rn, 0x2510, v);			\
+++		else if (rn == SPRN_DC_CST)				\
+++			do_mtspr_cpu6(rn, 0x3110, v);			\
+++		else if (rn == SPRN_DC_ADR)				\
+++			do_mtspr_cpu6(rn, 0x3310, v);			\
+++		else if (rn == SPRN_DC_DAT)				\
+++			do_mtspr_cpu6(rn, 0x3510, v);			\
+++		else if (rn == SPRN_MI_CTR)				\
+++			do_mtspr_cpu6(rn, 0x2180, v);			\
+++		else if (rn == SPRN_MI_AP)				\
+++			do_mtspr_cpu6(rn, 0x2580, v);			\
+++		else if (rn == SPRN_MI_EPN)				\
+++			do_mtspr_cpu6(rn, 0x2780, v);			\
+++		else if (rn == SPRN_MI_TWC)				\
+++			do_mtspr_cpu6(rn, 0x2b80, v);			\
+++		else if (rn == SPRN_MI_RPN)				\
+++			do_mtspr_cpu6(rn, 0x2d80, v);			\
+++		else if (rn == SPRN_MI_CAM)				\
+++			do_mtspr_cpu6(rn, 0x2190, v);			\
+++		else if (rn == SPRN_MI_RAM0)				\
+++			do_mtspr_cpu6(rn, 0x2390, v);			\
+++		else if (rn == SPRN_MI_RAM1)				\
+++			do_mtspr_cpu6(rn, 0x2590, v);			\
+++		else if (rn == SPRN_MD_CTR)				\
+++			do_mtspr_cpu6(rn, 0x3180, v);			\
+++		else if (rn == SPRN_M_CASID)				\
+++			do_mtspr_cpu6(rn, 0x3380, v);			\
+++		else if (rn == SPRN_MD_AP)				\
+++			do_mtspr_cpu6(rn, 0x3580, v);			\
+++		else if (rn == SPRN_MD_EPN)				\
+++			do_mtspr_cpu6(rn, 0x3780, v);			\
+++		else if (rn == SPRN_M_TWB)				\
+++			do_mtspr_cpu6(rn, 0x3980, v);			\
+++		else if (rn == SPRN_MD_TWC)				\
+++			do_mtspr_cpu6(rn, 0x3b80, v);			\
+++		else if (rn == SPRN_MD_RPN)				\
+++			do_mtspr_cpu6(rn, 0x3d80, v);			\
+++		else if (rn == SPRN_M_TW)				\
+++			do_mtspr_cpu6(rn, 0x3f80, v);			\
+++		else if (rn == SPRN_MD_CAM)				\
+++			do_mtspr_cpu6(rn, 0x3190, v);			\
+++		else if (rn == SPRN_MD_RAM0)				\
+++			do_mtspr_cpu6(rn, 0x3390, v);			\
+++		else if (rn == SPRN_MD_RAM1)				\
+++			do_mtspr_cpu6(rn, 0x3590, v);			\
+++		else if (rn == SPRN_DEC)				\
+++			do_mtspr_cpu6(rn, 0x2c00, v);			\
+++		else if (rn == SPRN_TBWL)				\
+++			do_mtspr_cpu6(rn, 0x3880, v);			\
+++		else if (rn == SPRN_TBWU)				\
+++			do_mtspr_cpu6(rn, 0x3a80, v);			\
+++		else if (rn == SPRN_DPDR)				\
+++			do_mtspr_cpu6(rn, 0x2d30, v);			\
+++		else							\
+++			do_mtspr(rn, v);				\
+++	} while (0)
+++#endif
+++
++ #endif /* _ASM_POWERPC_REG_8xx_H */
+diff --git a/./target/linux/mpc85xx/patches-4.4/241-powerpc-8xx-remove-special-handling-of-CPU6-errata-in-set_dec.patch b/./target/linux/mpc85xx/patches-4.4/241-powerpc-8xx-remove-special-handling-of-CPU6-errata-in-set_dec.patch
+new file mode 100644
+index 0000000..229863a
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/241-powerpc-8xx-remove-special-handling-of-CPU6-errata-in-set_dec.patch
+@@ -0,0 +1,58 @@
++diff --git a/arch/powerpc/include/asm/time.h b/arch/powerpc/include/asm/time.h
++index 2d7109a..1092fdd 100644
++--- a/arch/powerpc/include/asm/time.h
+++++ b/arch/powerpc/include/asm/time.h
++@@ -31,8 +31,6 @@ extern void tick_broadcast_ipi_handler(void);
++ 
++ extern void generic_calibrate_decr(void);
++ 
++-extern void set_dec_cpu6(unsigned int val);
++-
++ /* Some sane defaults: 125 MHz timebase, 1GHz processor */
++ extern unsigned long ppc_proc_freq;
++ #define DEFAULT_PROC_FREQ	(DEFAULT_TB_FREQ * 8)
++@@ -166,14 +164,12 @@ static inline void set_dec(int val)
++ {
++ #if defined(CONFIG_40x)
++ 	mtspr(SPRN_PIT, val);
++-#elif defined(CONFIG_8xx_CPU6)
++-	set_dec_cpu6(val - 1);
++ #else
++ #ifndef CONFIG_BOOKE
++ 	--val;
++ #endif
++ 	mtspr(SPRN_DEC, val);
++-#endif /* not 40x or 8xx_CPU6 */
+++#endif /* not 40x */
++ }
++ 
++ static inline unsigned long tb_ticks_since(unsigned long tstamp)
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index a268cf4..637f8e9 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -1011,24 +1011,6 @@ _GLOBAL(set_context)
++ 	SYNC
++ 	blr
++ 
++-#ifdef CONFIG_8xx_CPU6
++-/* It's here because it is unique to the 8xx.
++- * It is important we get called with interrupts disabled.  I used to
++- * do that, but it appears that all code that calls this already had
++- * interrupt disabled.
++- */
++-	.globl	set_dec_cpu6
++-set_dec_cpu6:
++-	lis	r7, cpu6_errata_word@h
++-	ori	r7, r7, cpu6_errata_word@l
++-	li	r4, 0x2c00
++-	stw	r4, 8(r7)
++-	lwz	r4, 8(r7)
++-        mtspr   22, r3		/* Update Decrementer */
++-	SYNC
++-	blr
++-#endif
++-
++ /*
++  * We put a few things here that have to be page-aligned.
++  * This stuff goes at the beginning of the data segment,
+diff --git a/./target/linux/mpc85xx/patches-4.4/242-powerpc-8xx-rewrite-set_context-in-C.patch b/./target/linux/mpc85xx/patches-4.4/242-powerpc-8xx-rewrite-set_context-in-C.patch
+new file mode 100644
+index 0000000..27532ca
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/242-powerpc-8xx-rewrite-set_context-in-C.patch
+@@ -0,0 +1,97 @@
++diff --git a/arch/powerpc/kernel/head_8xx.S b/arch/powerpc/kernel/head_8xx.S
++index 637f8e9..bb2b657 100644
++--- a/arch/powerpc/kernel/head_8xx.S
+++++ b/arch/powerpc/kernel/head_8xx.S
++@@ -968,50 +968,6 @@ initial_mmu:
++ 
++ 
++ /*
++- * Set up to use a given MMU context.
++- * r3 is context number, r4 is PGD pointer.
++- *
++- * We place the physical address of the new task page directory loaded
++- * into the MMU base register, and set the ASID compare register with
++- * the new "context."
++- */
++-_GLOBAL(set_context)
++-
++-#ifdef CONFIG_BDI_SWITCH
++-	/* Context switch the PTE pointer for the Abatron BDI2000.
++-	 * The PGDIR is passed as second argument.
++-	 */
++-	lis	r5, KERNELBASE@h
++-	lwz	r5, 0xf0(r5)
++-	stw	r4, 0x4(r5)
++-#endif
++-
++-	/* Register M_TW will contain base address of level 1 table minus the
++-	 * lower part of the kernel PGDIR base address, so that all accesses to
++-	 * level 1 table are done relative to lower part of kernel PGDIR base
++-	 * address.
++-	 */
++-	li	r5, (swapper_pg_dir-PAGE_OFFSET)@l
++-	sub	r4, r4, r5
++-	tophys	(r4, r4)
++-#ifdef CONFIG_8xx_CPU6
++-	lis	r6, cpu6_errata_word@h
++-	ori	r6, r6, cpu6_errata_word@l
++-	li	r7, 0x3f80
++-	stw	r7, 12(r6)
++-	lwz	r7, 12(r6)
++-#endif
++-	mtspr	SPRN_M_TW, r4		/* Update pointeur to level 1 table */
++-#ifdef CONFIG_8xx_CPU6
++-	li	r7, 0x3380
++-	stw	r7, 12(r6)
++-	lwz	r7, 12(r6)
++-#endif
++-	mtspr	SPRN_M_CASID, r3	/* Update context */
++-	SYNC
++-	blr
++-
++-/*
++  * We put a few things here that have to be page-aligned.
++  * This stuff goes at the beginning of the data segment,
++  * which is page-aligned.
++diff --git a/arch/powerpc/mm/8xx_mmu.c b/arch/powerpc/mm/8xx_mmu.c
++index 50f17d2..b75c461 100644
++--- a/arch/powerpc/mm/8xx_mmu.c
+++++ b/arch/powerpc/mm/8xx_mmu.c
++@@ -147,3 +147,37 @@ void setup_initial_memory_limit(phys_addr_t first_memblock_base,
++ 	memblock_set_current_limit(min_t(u64, first_memblock_size,
++ 					 initial_memory_size));
++ }
+++
+++/*
+++ * Set up to use a given MMU context.
+++ * id is context number, pgd is PGD pointer.
+++ *
+++ * We place the physical address of the new task page directory loaded
+++ * into the MMU base register, and set the ASID compare register with
+++ * the new "context."
+++ */
+++void set_context(unsigned long id, pgd_t *pgd)
+++{
+++	s16 offset = (s16)(__pa(swapper_pg_dir));
+++
+++#ifdef CONFIG_BDI_SWITCH
+++	pgd_t	**ptr = *(pgd_t ***)(KERNELBASE + 0xf0);
+++
+++	/* Context switch the PTE pointer for the Abatron BDI2000.
+++	 * The PGDIR is passed as second argument.
+++	 */
+++	*(ptr + 1) = pgd;
+++#endif
+++
+++	/* Register M_TW will contain base address of level 1 table minus the
+++	 * lower part of the kernel PGDIR base address, so that all accesses to
+++	 * level 1 table are done relative to lower part of kernel PGDIR base
+++	 * address.
+++	 */
+++	mtspr(SPRN_M_TW, __pa(pgd) - offset);
+++
+++	/* Update context */
+++	mtspr(SPRN_M_CASID, id);
+++	/* sync */
+++	mb();
+++}
+diff --git a/./target/linux/mpc85xx/patches-4.4/243-powerpc-8xx-rewrite-flush_instruction_cache-in-C.patch b/./target/linux/mpc85xx/patches-4.4/243-powerpc-8xx-rewrite-flush_instruction_cache-in-C.patch
+new file mode 100644
+index 0000000..f3b1f5c
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/243-powerpc-8xx-rewrite-flush_instruction_cache-in-C.patch
+@@ -0,0 +1,46 @@
++diff --git a/arch/powerpc/kernel/misc_32.S b/arch/powerpc/kernel/misc_32.S
++index be8edd6..7d1284f 100644
++--- a/arch/powerpc/kernel/misc_32.S
+++++ b/arch/powerpc/kernel/misc_32.S
++@@ -296,12 +296,9 @@ _GLOBAL(real_writeb)
++  * Flush instruction cache.
++  * This is a no-op on the 601.
++  */
+++#ifndef CONFIG_PPC_8xx
++ _GLOBAL(flush_instruction_cache)
++-#if defined(CONFIG_8xx)
++-	isync
++-	lis	r5, IDC_INVALL@h
++-	mtspr	SPRN_IC_CST, r5
++-#elif defined(CONFIG_4xx)
+++#if defined(CONFIG_4xx)
++ #ifdef CONFIG_403GCX
++ 	li      r3, 512
++ 	mtctr   r3
++@@ -334,9 +331,10 @@ END_FTR_SECTION_IFSET(CPU_FTR_UNIFIED_ID_CACHE)
++ 	mfspr	r3,SPRN_HID0
++ 	ori	r3,r3,HID0_ICFI
++ 	mtspr	SPRN_HID0,r3
++-#endif /* CONFIG_8xx/4xx */
+++#endif /* CONFIG_4xx */
++ 	isync
++ 	blr
+++#endif /* CONFIG_PPC_8xx */
++ 
++ /*
++  * Write any modified data cache blocks out to memory
++diff --git a/arch/powerpc/mm/8xx_mmu.c b/arch/powerpc/mm/8xx_mmu.c
++index b75c461..e2ce480 100644
++--- a/arch/powerpc/mm/8xx_mmu.c
+++++ b/arch/powerpc/mm/8xx_mmu.c
++@@ -181,3 +181,10 @@ void set_context(unsigned long id, pgd_t *pgd)
++ 	/* sync */
++ 	mb();
++ }
+++
+++void flush_instruction_cache(void)
+++{
+++	isync();
+++	mtspr(SPRN_IC_CST, IDC_INVALL);
+++	isync();
+++}
+diff --git a/./target/linux/mpc85xx/patches-4.4/244-powerpc-Simplify-test-in-__dma_sync.patch b/./target/linux/mpc85xx/patches-4.4/244-powerpc-Simplify-test-in-__dma_sync.patch
+new file mode 100644
+index 0000000..1e2f226
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/244-powerpc-Simplify-test-in-__dma_sync.patch
+@@ -0,0 +1,13 @@
++diff --git a/arch/powerpc/mm/dma-noncoherent.c b/arch/powerpc/mm/dma-noncoherent.c
++index 169aba4..2dc74e5 100644
++--- a/arch/powerpc/mm/dma-noncoherent.c
+++++ b/arch/powerpc/mm/dma-noncoherent.c
++@@ -327,7 +327,7 @@ void __dma_sync(void *vaddr, size_t size, int direction)
++ 		 * invalidate only when cache-line aligned otherwise there is
++ 		 * the potential for discarding uncommitted data from the cache
++ 		 */
++-		if ((start & (L1_CACHE_BYTES - 1)) || (size & (L1_CACHE_BYTES - 1)))
+++		if ((start | end) & (L1_CACHE_BYTES - 1))
++ 			flush_dcache_range(start, end);
++ 		else
++ 			invalidate_dcache_range(start, end);
+diff --git a/./target/linux/mpc85xx/patches-4.4/245-powerpc32-Remove-one-insn-in-mulhdu.patch b/./target/linux/mpc85xx/patches-4.4/245-powerpc32-Remove-one-insn-in-mulhdu.patch
+new file mode 100644
+index 0000000..098ea6b
+--- /dev/null
++++ b/./target/linux/mpc85xx/patches-4.4/245-powerpc32-Remove-one-insn-in-mulhdu.patch
+@@ -0,0 +1,27 @@
++diff --git a/arch/powerpc/kernel/misc_32.S b/arch/powerpc/kernel/misc_32.S
++index 3ec5a22..bf5160f 100644
++--- a/arch/powerpc/kernel/misc_32.S
+++++ b/arch/powerpc/kernel/misc_32.S
++@@ -91,17 +91,16 @@ _GLOBAL(mulhdu)
++ 	addc	r7,r0,r7
++ 	addze	r4,r4
++ 1:	beqlr	cr1		/* all done if high part of A is 0 */
++-	mr	r10,r3
++ 	mullw	r9,r3,r5
++-	mulhwu	r3,r3,r5
+++	mulhwu	r10,r3,r5
++ 	beq	2f
++-	mullw	r0,r10,r6
++-	mulhwu	r8,r10,r6
+++	mullw	r0,r3,r6
+++	mulhwu	r8,r3,r6
++ 	addc	r7,r0,r7
++ 	adde	r4,r4,r8
++-	addze	r3,r3
+++	addze	r10,r10
++ 2:	addc	r4,r4,r9
++-	addze	r3,r3
+++	addze	r3,r10
++ 	blr
++ 
++ /*
