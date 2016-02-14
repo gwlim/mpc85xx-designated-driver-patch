@@ -1,6 +1,9 @@
+diff --git a/./target/linux/mpc85xx/patches-4.4/222-add-devices-tl-wdr4900-dts.patch b/./target/linux/mpc85xx/patches-4.4/222-add-devices-tl-wdr4900-dts.patch
+new file mode 100644
+index 0000000..6d6931b
 --- /dev/null
-+++ ./target/linux/mpc85xx/patches-4.4/222-add-devices-tl-wdr4900-dts.patch
-@@ -0,0 +1,141 @@
++++ b/./target/linux/mpc85xx/patches-4.4/222-add-devices-tl-wdr4900-dts.patch
+@@ -0,0 +1,103 @@
 +--- a/arch/powerpc/boot/dts/tl-wdr4900-v1.dts
 ++++ b/arch/powerpc/boot/dts/tl-wdr4900-v1.dts
 +@@ -26,6 +26,17 @@
@@ -21,7 +24,7 @@
 + 	memory {
 + 		device_type = "memory";
 + 	};
-+@@ -116,8 +127,26 @@
++@@ -117,6 +128,13 @@
 + 		};
 + 
 + 		enet0: ethernet@b0000 {
@@ -32,27 +35,13 @@
 ++			compatible = "fsl,etsec2";
 ++			fsl,num_rx_queues = <0x8>;
 ++			fsl,num_tx_queues = <0x8>;
-++			
-++			
 + 			phy-handle = <&phy0>;
 + 			phy-connection-type = "rgmii-id";
-++
-++			
-++			
-++			
-++			
-++			
-++			
-++			
-++			
-+ 		};
-+ 
-+ 		enet1: ethernet@b1000 {
-+@@ -131,6 +160,15 @@
-+ 		sdhc@2e000 {
++ 			mtd-mac-address = <&config 0x144>;
++@@ -134,6 +152,15 @@
 + 			status = "disabled";
 + 		};
-++ 
++ 
 ++		mpic: pic@40000 {
 ++			interrupt-controller;
 ++			#address-cells = <0>;
@@ -61,14 +50,14 @@
 ++			compatible = "chrp,open-pic";
 ++			device_type = "open-pic";
 ++		};
-+ 
+++
 + 		serial1: serial@4600 {
 + 			status = "disabled";
-+@@ -143,6 +181,52 @@
-+ 		can1: can@1d000 {
++ 		};
++@@ -142,6 +169,52 @@
 + 			status = "disabled";
 + 		};
-++
++ 
 ++		L2: l2-cache-controller@20000 {
 ++			compatible = "fsl,p1014-l2-cache-controller";
 ++			reg = <0x20000 0x1000>;
@@ -110,35 +99,11 @@
 ++				compatible = "fsl,eloplus-dma-channel";
 ++				reg = <0x180 0x80>;
 ++				cell-index = <3>;
-++				
+++			
 ++				interrupts = <23 2>;
 ++			};
 ++		};
-+ 	};
-+ 
-+ 	pci0: pcie@ffe09000 {
-+@@ -196,6 +280,11 @@
-+ 			gpios = <&gpio0 4 1>; /* active low */
-+ 			label = "tp-link:green:usb2";
-+ 		};
 ++
-++		usbpower {
-++			gpios = <&gpio0 10 1>; /* active low */
-++			label = "tp-link:usb:power";
-++		};
-+ 	};
-+ 
-+ 	buttons {
-+@@ -206,6 +295,12 @@
-+ 			gpios = <&gpio0 5 1>; /* active low */
-+ 			linux,code = <0x198>; /* KEY_RESTART */
++ 		can1: can@1d000 {
++ 			status = "disabled";
 + 		};
-++
-++		rfkill {
-++			label = "RFKILL switch";
-++			gpios = <&gpio0 11 1>; /* active low */
-++			linux,code = <0xf7>; /* RFKill */
-++		};
-+ 	};
-+ };
-+ 
