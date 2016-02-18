@@ -1,4 +1,4 @@
-diff --git a/./toolchain/gcc/patches/990-unused-gcc-variable.patch b/./toolchain/gcc/patches/990-unused-gcc-variable.patch
+diff --git a/./toolchain/gcc/patches/5.2.0/990-unused-gcc-variable.patch b/./toolchain/gcc/patches/5.2.0/990-unused-gcc-variable.patch
 new file mode 100644
 index 0000000..c6210cd
 --- /dev/null
