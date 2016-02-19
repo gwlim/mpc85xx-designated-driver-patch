@@ -11,7 +11,7 @@ index 0000000..394ae49
 + 
 + /* The maximum number of packets to be handled in one call of gfar_poll */
 +-#define GFAR_DEV_WEIGHT 64
-++#define GFAR_DEV_WEIGHT 64
+++#define GFAR_DEV_WEIGHT 32
 + 
 + /* Length for FCB */
 + #define GMAC_FCB_LEN 8
@@ -34,7 +34,7 @@ index 0000000..394ae49
 + /* These need to be powers of 2 for this driver */
 +-#define DEFAULT_TX_RING_SIZE	256
 +-#define DEFAULT_RX_RING_SIZE	256
-++#define DEFAULT_TX_RING_SIZE	128
+++#define DEFAULT_TX_RING_SIZE	256
 ++#define DEFAULT_RX_RING_SIZE	256
 + 
 +-#define GFAR_RX_BUFF_ALLOC	16
@@ -43,7 +43,7 @@ index 0000000..394ae49
 +-#define GFAR_RX_MAX_RING_SIZE   256
 +-#define GFAR_TX_MAX_RING_SIZE   256
 ++#define GFAR_RX_MAX_RING_SIZE   256
-++#define GFAR_TX_MAX_RING_SIZE   128
+++#define GFAR_TX_MAX_RING_SIZE   256
 + 
 + #define GFAR_MAX_FIFO_THRESHOLD 511
 + #define GFAR_MAX_FIFO_STARVE	511
