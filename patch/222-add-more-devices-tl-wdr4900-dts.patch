@@ -89,11 +89,11 @@ index 0000000..1b6e329
 ++			interrupt-parent = <&mpic>;
 ++		};
 ++
-++	
-++	
-++	
-++	
-++	
+++		cache-sram@fff00000 {
+++			fsl,cache-sram-ctlr-handle = <&L2>;
+++			reg = <0 0xfff00000 0 0x10000>;
+++			compatible = "fsl,p1014-cache-sram";
+++		};
 ++	
 ++	
 ++	
