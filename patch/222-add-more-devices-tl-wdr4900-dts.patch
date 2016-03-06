@@ -105,7 +105,7 @@ index 0000000..1b6e329
 +@@ -83,14 +165,31 @@
 + 		};
 + 
-+ 		gpio0: gpio-controller@f000 {
++ 		gpio0: gpio-controller@fc00 {
 ++			#gpio-cells = <2>;
 ++			compatible = "fsl,mpc8548-gpio";
 ++			reg = <0xf000 0x100>;
